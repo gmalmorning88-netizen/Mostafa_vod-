@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Mostafa - Vodafone Charge App
-Auto-login with SIM number, Arabic font fix, comfortable UI
+Using Android system Arabic font, compact UI
 """
 
 from kivy.app import App
@@ -29,23 +29,44 @@ from datetime import datetime
 FONT_NAME = 'Roboto'
 
 def setup_font():
-    """Setup Arabic font"""
+    """Setup Arabic font using Android system fonts"""
     global FONT_NAME
-    font_paths = [
+
+    if platform == 'android':
+        # Try Android system Arabic fonts
+        android_fonts = [
+            '/system/fonts/DroidSansArabic.ttf',
+            '/system/fonts/NotoNaskhArabic-Regular.ttf',
+            '/system/fonts/NotoSansArabic-Regular.ttf',
+        ]
+
+        for font_path in android_fonts:
+            if os.path.exists(font_path):
+                try:
+                    LabelBase.register(name='ArabicFont', fn_regular=font_path)
+                    FONT_NAME = 'ArabicFont'
+                    print(f"✅ Font loaded: {font_path}")
+                    return True
+                except Exception as e:
+                    print(f"❌ Failed to load {font_path}: {e}")
+
+    # Fallback: try Cairo-Regular.ttf from app directory
+    app_fonts = [
         'Cairo-Regular.ttf',
         os.path.join(os.path.dirname(__file__), 'Cairo-Regular.ttf'),
     ]
 
-    for path in font_paths:
-        if os.path.exists(path):
+    for font_path in app_fonts:
+        if os.path.exists(font_path):
             try:
-                LabelBase.register(name='ArabicFont', fn_regular=path)
+                LabelBase.register(name='ArabicFont', fn_regular=font_path)
                 FONT_NAME = 'ArabicFont'
-                print(f"Font loaded: {path}")
+                print(f"✅ Font loaded: {font_path}")
                 return True
             except Exception as e:
-                print(f"Font error: {e}")
+                print(f"❌ Failed to load {font_path}: {e}")
 
+    print("⚠️ Using default font (Arabic may not display correctly)")
     return False
 
 # ==================== CONFIG ====================
@@ -117,7 +138,7 @@ class VodafoneApp(App):
         setup_font()
         Window.clearcolor = (0.03, 0, 0, 1)
         self.title = 'Mostafa - شحن كروت فودافون'
-        self.main_layout = BoxLayout(orientation='vertical', padding=10, spacing=8)
+        self.main_layout = BoxLayout(orientation='vertical', padding=5, spacing=5)
 
         # Try auto-login first
         auto_phone = get_sim_number()
@@ -140,50 +161,50 @@ class VodafoneApp(App):
         title = Label(
             text='[b][color=E60000]VODAFONE[/color][/b]\nMostafa',
             markup=True,
-            font_size='32sp',
+            font_size='28sp',
             size_hint_y=None,
-            height=120,
+            height=100,
             font_name=FONT_NAME
         )
         self.main_layout.add_widget(title)
-        self.main_layout.add_widget(Label(size_hint_y=0.2))
+        self.main_layout.add_widget(Label(size_hint_y=0.1))
 
         subtitle = Label(
             text='شحن كروت فودافون',
-            font_size='22sp',
+            font_size='20sp',
             size_hint_y=None,
-            height=50,
+            height=40,
             font_name=FONT_NAME,
             color=(1, 1, 1, 1)
         )
         self.main_layout.add_widget(subtitle)
-        self.main_layout.add_widget(Label(size_hint_y=0.1))
+        self.main_layout.add_widget(Label(size_hint_y=0.05))
 
-        # Large phone input
+        # Phone input - larger
         self.phone_input = TextInput(
             hint_text='رقم الهاتف (01XXXXXXXXX)',
             multiline=False,
             input_filter='int',
             size_hint_y=None,
-            height=70,
+            height=60,
             background_color=(0.15, 0.15, 0.15, 1),
             foreground_color=(1, 1, 1, 1),
             hint_text_color=(0.6, 0.6, 0.6, 1),
-            padding=(20, 15),
-            font_size='20sp',
+            padding=(15, 12),
+            font_size='18sp',
             font_name=FONT_NAME
         )
         self.main_layout.add_widget(self.phone_input)
-        self.main_layout.add_widget(Label(size_hint_y=0.1))
+        self.main_layout.add_widget(Label(size_hint_y=0.05))
 
-        # Large login button
+        # Login button - larger
         login_btn = Button(
             text='دخول',
             size_hint_y=None,
-            height=70,
+            height=60,
             background_color=(0.9, 0, 0, 1),
             color=(1, 1, 1, 1),
-            font_size='22sp',
+            font_size='20sp',
             bold=True,
             font_name=FONT_NAME
         )
@@ -197,13 +218,13 @@ class VodafoneApp(App):
             height=50,
             background_color=(0.2, 0.5, 0.9, 1),
             color=(1, 1, 1, 1),
-            font_size='16sp',
+            font_size='14sp',
             font_name=FONT_NAME
         )
         auto_btn.bind(on_press=self.try_auto_login)
         self.main_layout.add_widget(auto_btn)
 
-        self.main_layout.add_widget(Label(size_hint_y=0.3))
+        self.main_layout.add_widget(Label(size_hint_y=0.2))
 
     def try_auto_login(self, instance):
         """Retry auto-login"""
@@ -263,15 +284,15 @@ class VodafoneApp(App):
     def show_home(self):
         self.main_layout.clear_widgets()
 
-        # Header with larger buttons
-        header = BoxLayout(size_hint_y=None, height=80, spacing=10)
+        # Compact header
+        header = BoxLayout(size_hint_y=None, height=60, spacing=5)
 
         points_btn = Button(
             text=f'⭐ {self.points} نقطة',
             size_hint_x=0.5,
             background_color=(0.97, 0.79, 0.28, 0.2),
             color=(0.97, 0.79, 0.28, 1),
-            font_size='18sp',
+            font_size='14sp',
             bold=True,
             font_name=FONT_NAME
         )
@@ -283,7 +304,7 @@ class VodafoneApp(App):
             size_hint_x=0.5,
             background_color=(0.97, 0.79, 0.28, 0.3),
             color=(0.97, 0.79, 0.28, 1),
-            font_size='18sp',
+            font_size='14sp',
             bold=True,
             font_name=FONT_NAME
         )
@@ -292,14 +313,14 @@ class VodafoneApp(App):
 
         self.main_layout.add_widget(header)
 
-        # Category buttons - larger
-        cat_layout = BoxLayout(size_hint_y=None, height=60, spacing=10)
+        # Compact category buttons
+        cat_layout = BoxLayout(size_hint_y=None, height=45, spacing=5)
 
         all_btn = Button(
             text='الكل',
             background_color=(0.9, 0, 0, 0.3),
             color=(1, 1, 1, 1),
-            font_size='16sp',
+            font_size='13sp',
             font_name=FONT_NAME
         )
         all_btn.bind(on_press=lambda x: self.show_products('all'))
@@ -309,7 +330,7 @@ class VodafoneApp(App):
             text='⚡ فكة',
             background_color=(0.9, 0, 0, 0.3),
             color=(1, 1, 1, 1),
-            font_size='16sp',
+            font_size='13sp',
             font_name=FONT_NAME
         )
         fakka_btn.bind(on_press=lambda x: self.show_products('fakka'))
@@ -319,7 +340,7 @@ class VodafoneApp(App):
             text='🔥 مارد',
             background_color=(0.9, 0, 0, 0.3),
             color=(1, 1, 1, 1),
-            font_size='16sp',
+            font_size='13sp',
             font_name=FONT_NAME
         )
         mared_btn.bind(on_press=lambda x: self.show_products('mared'))
@@ -344,7 +365,7 @@ class VodafoneApp(App):
             products = MARED_PRODUCTS
 
         scroll = ScrollView()
-        grid = GridLayout(cols=2, spacing=12, padding=12, size_hint_y=None)
+        grid = GridLayout(cols=2, spacing=8, padding=8, size_hint_y=None)
         grid.bind(minimum_height=grid.setter('height'))
 
         for product in products:
@@ -352,10 +373,10 @@ class VodafoneApp(App):
                 text=f'[b]{product["name"]}[/b]\n{product["price"]} جنيه\n{product.get("units", 0)} {product.get("type", "وحدة")}',
                 markup=True,
                 size_hint_y=None,
-                height=140,
+                height=110,
                 background_color=(0.9, 0, 0, 0.2),
                 color=(1, 1, 1, 1),
-                font_size='14sp',
+                font_size='12sp',
                 font_name=FONT_NAME
             )
             btn.bind(on_press=lambda x, p=product: self.show_charge_dialog(p))
@@ -365,58 +386,59 @@ class VodafoneApp(App):
         self.products_layout.add_widget(scroll)
 
     def show_charge_dialog(self, product):
-        content = BoxLayout(orientation='vertical', spacing=15, padding=25)
+        # Compact popup
+        content = BoxLayout(orientation='vertical', spacing=8, padding=15)
 
         info = Label(
             text=f'[b]{product["name"]}[/b]\nالسعر: {product["price"]} جنيه\nسيتم خصم نقطة واحدة',
             markup=True,
-            font_size='18sp',
+            font_size='16sp',
             color=(1, 1, 1, 1),
             size_hint_y=None,
-            height=100,
+            height=70,
             font_name=FONT_NAME
         )
         content.add_widget(info)
 
-        # Large target phone input
+        # Target phone - compact but readable
         target_input = TextInput(
             hint_text='رقم الهاتف للشحن',
             multiline=False,
             input_filter='int',
             size_hint_y=None,
-            height=65,
+            height=55,
             background_color=(0.15, 0.15, 0.15, 1),
             foreground_color=(1, 1, 1, 1),
             hint_text_color=(0.6, 0.6, 0.6, 1),
-            padding=(20, 15),
-            font_size='18sp',
+            padding=(15, 10),
+            font_size='16sp',
             font_name=FONT_NAME
         )
         content.add_widget(target_input)
 
-        # Large PIN input
+        # PIN - compact
         pin_input = TextInput(
             hint_text='الرقم السري للمحفظة',
             multiline=False,
             password=True,
             size_hint_y=None,
-            height=65,
+            height=55,
             background_color=(0.15, 0.15, 0.15, 1),
             foreground_color=(1, 1, 1, 1),
             hint_text_color=(0.6, 0.6, 0.6, 1),
-            padding=(20, 15),
-            font_size='18sp',
+            padding=(15, 10),
+            font_size='16sp',
             font_name=FONT_NAME
         )
         content.add_widget(pin_input)
 
-        btn_layout = BoxLayout(size_hint_y=None, height=60, spacing=15)
+        btn_layout = BoxLayout(size_hint_y=None, height=50, spacing=10)
 
         cancel_btn = Button(
             text='إلغاء',
             background_color=(0.5, 0.5, 0.5, 1),
             color=(1, 1, 1, 1),
-            font_size='16sp',
+            font_size='14sp',
             font_name=FONT_NAME
         )
 
@@ -425,7 +447,7 @@ class VodafoneApp(App):
             background_color=(0.9, 0, 0, 1),
             color=(1, 1, 1, 1),
             bold=True,
-            font_size='18sp',
+            font_size='16sp',
             font_name=FONT_NAME
         )
 
@@ -436,7 +458,7 @@ class VodafoneApp(App):
         popup = Popup(
             title=f'شحن {product["name"]}',
             content=content,
-            size_hint=(0.95, 0.85),
+            size_hint=(0.95, 0.65),
             auto_dismiss=False,
             title_font=FONT_NAME
         )
@@ -466,15 +488,15 @@ class VodafoneApp(App):
         popup.open()
 
     def charge_card(self, msisdn, pin, product):
-        loading_content = BoxLayout(orientation='vertical', padding=30, spacing=15)
-        loading_content.add_widget(Label(text='جاري الشحن...', font_size='22sp', font_name=FONT_NAME))
-        progress = ProgressBar(max=100, value=50, size_hint_y=None, height=30)
+        loading_content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        loading_content.add_widget(Label(text='جاري الشحن...', font_size='20sp', font_name=FONT_NAME))
+        progress = ProgressBar(max=100, value=50, size_hint_y=None, height=25)
         loading_content.add_widget(progress)
 
         loading_popup = Popup(
             title='الرجاء الانتظار',
             content=loading_content,
-            size_hint=(0.85, 0.35),
+            size_hint=(0.8, 0.3),
             auto_dismiss=False,
             title_font=FONT_NAME
         )
@@ -653,16 +675,16 @@ class VodafoneApp(App):
             pass
 
     def show_points_dialog(self, instance=None):
-        content = BoxLayout(orientation='vertical', spacing=15, padding=25)
+        content = BoxLayout(orientation='vertical', spacing=10, padding=20)
         content.add_widget(Label(
             text=f'[b][color=F7C948]⭐ {self.points} نقطة[/color][/b]',
             markup=True,
-            font_size='28sp',
+            font_size='24sp',
             font_name=FONT_NAME
         ))
         content.add_widget(Label(
             text='كل شحنة تخصم نقطة واحدة',
-            font_size='16sp',
+            font_size='14sp',
             color=(0.7, 0.7, 0.7, 1),
             font_name=FONT_NAME
         ))
@@ -670,37 +692,37 @@ class VodafoneApp(App):
         close_btn = Button(
             text='إغلاق',
             size_hint_y=None,
-            height=60,
+            height=55,
             background_color=(0.5, 0.5, 0.5, 1),
-            font_size='18sp',
+            font_size='16sp',
             font_name=FONT_NAME
         )
 
-        popup = Popup(title='رصيد النقاط', content=content, size_hint=(0.85, 0.45), title_font=FONT_NAME)
+        popup = Popup(title='رصيد النقاط', content=content, size_hint=(0.85, 0.4), title_font=FONT_NAME)
         close_btn.bind(on_press=popup.dismiss)
         content.add_widget(close_btn)
         popup.open()
 
     def show_recharge_dialog(self, instance=None):
-        content = BoxLayout(orientation='vertical', spacing=12, padding=25)
+        content = BoxLayout(orientation='vertical', spacing=8, padding=20)
 
         content.add_widget(Label(
             text='اختر باقة الشحن:',
-            font_size='20sp',
+            font_size='18sp',
             color=(1, 1, 1, 1),
             font_name=FONT_NAME,
             size_hint_y=None,
-            height=50
+            height=40
         ))
 
         for pkg in POINTS_PACKAGES:
             btn = Button(
                 text=pkg['label'],
                 size_hint_y=None,
-                height=65,
+                height=55,
                 background_color=(0.97, 0.79, 0.28, 0.2),
                 color=(0.97, 0.79, 0.28, 1),
-                font_size='18sp',
+                font_size='16sp',
                 font_name=FONT_NAME
             )
             btn.bind(on_press=lambda x, p=pkg: self.send_recharge_request(p))
@@ -709,13 +731,13 @@ class VodafoneApp(App):
         close_btn = Button(
             text='إلغاء',
             size_hint_y=None,
-            height=60,
+            height=55,
             background_color=(0.5, 0.5, 0.5, 1),
-            font_size='18sp',
+            font_size='16sp',
             font_name=FONT_NAME
         )
 
-        popup = Popup(title='شحن نقاط', content=content, size_hint=(0.95, 0.8), title_font=FONT_NAME)
+        popup = Popup(title='شحن نقاط', content=content, size_hint=(0.95, 0.75), title_font=FONT_NAME)
         close_btn.bind(on_press=popup.dismiss)
         content.add_widget(close_btn)
         popup.open()
@@ -758,12 +780,12 @@ class VodafoneApp(App):
     def show_admin_panel(self):
         self.main_layout.clear_widgets()
 
-        header = BoxLayout(size_hint_y=None, height=90, spacing=10)
+        header = BoxLayout(size_hint_y=None, height=70, spacing=5)
 
         title = Label(
             text='[b][color=E60000]لوحة التحكم[/color][/b]',
             markup=True,
-            font_size='24sp',
+            font_size='20sp',
             size_hint_x=0.6,
             font_name=FONT_NAME
         )
@@ -773,7 +795,7 @@ class VodafoneApp(App):
             text='🔄',
             size_hint_x=0.2,
             background_color=(0.2, 0.6, 1, 1),
-            font_size='24sp'
+            font_size='20sp'
         )
         refresh_btn.bind(on_press=lambda x: self.load_admin_requests())
         header.add_widget(refresh_btn)
@@ -783,7 +805,7 @@ class VodafoneApp(App):
             size_hint_x=0.2,
             background_color=(0.9, 0, 0, 1),
             color=(1, 1, 1, 1),
-            font_size='16sp',
+            font_size='12sp',
             font_name=FONT_NAME
         )
         logout_btn.bind(on_press=lambda x: self.show_login())
@@ -791,11 +813,11 @@ class VodafoneApp(App):
 
         self.main_layout.add_widget(header)
 
-        stats = BoxLayout(size_hint_y=None, height=60, spacing=10)
+        stats = BoxLayout(size_hint_y=None, height=45, spacing=5)
         self.pending_label = Label(
             text='جاري التحميل...',
             color=(0.97, 0.79, 0.28, 1),
-            font_size='18sp',
+            font_size='16sp',
             font_name=FONT_NAME
         )
         stats.add_widget(self.pending_label)
@@ -847,13 +869,13 @@ class VodafoneApp(App):
             self.requests_layout.add_widget(Label(
                 text='لا توجد طلبات حالياً',
                 color=(0.5, 0.5, 0.5, 1),
-                font_size='20sp',
+                font_size='18sp',
                 font_name=FONT_NAME
             ))
             return
 
         scroll = ScrollView()
-        layout = BoxLayout(orientation='vertical', spacing=12, padding=15, size_hint_y=None)
+        layout = BoxLayout(orientation='vertical', spacing=8, padding=10, size_hint_y=None)
         layout.bind(minimum_height=layout.setter('height'))
 
         for req in requests_list:
@@ -866,10 +888,10 @@ class VodafoneApp(App):
 
             card = BoxLayout(
                 orientation='vertical',
-                spacing=8,
-                padding=20,
+                spacing=5,
+                padding=15,
                 size_hint_y=None,
-                height=220
+                height=180
             )
 
             info = Label(
@@ -881,21 +903,21 @@ class VodafoneApp(App):
                     f'🕐 {created}'
                 ),
                 markup=True,
-                font_size='16sp',
+                font_size='14sp',
                 color=(1, 1, 1, 1),
                 size_hint_y=None,
-                height=150,
+                height=130,
                 font_name=FONT_NAME
             )
             card.add_widget(info)
 
-            btn_layout = BoxLayout(size_hint_y=None, height=55, spacing=15)
+            btn_layout = BoxLayout(size_hint_y=None, height=45, spacing=10)
 
             reject_btn = Button(
                 text='❌ رفض',
                 background_color=(0.8, 0, 0, 1),
                 color=(1, 1, 1, 1),
-                font_size='16sp',
+                font_size='14sp',
                 font_name=FONT_NAME
             )
             reject_btn.bind(on_press=lambda x, rid=req_id: self.handle_request(rid, 'rejected', phone, 0))
@@ -904,7 +926,7 @@ class VodafoneApp(App):
                 text='✅ موافقة',
                 background_color=(0, 0.7, 0.3, 1),
                 color=(1, 1, 1, 1),
-                font_size='16sp',
+                font_size='14sp',
                 font_name=FONT_NAME
             )
             approve_btn.bind(on_press=lambda x, rid=req_id, p=phone, pts=points: self.handle_request(rid, 'approved', p, pts))
@@ -963,11 +985,11 @@ class VodafoneApp(App):
         threading.Thread(target=process).start()
 
     def show_popup(self, title, message):
-        content = BoxLayout(orientation='vertical', padding=25, spacing=15)
-        content.add_widget(Label(text=message, font_size='18sp', font_name=FONT_NAME))
+        content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        content.add_widget(Label(text=message, font_size='16sp', font_name=FONT_NAME))
 
-        btn = Button(text='حسناً', size_hint_y=None, height=60, font_size='18sp', font_name=FONT_NAME)
-        popup = Popup(title=title, content=content, size_hint=(0.85, 0.45), title_font=FONT_NAME)
+        btn = Button(text='حسناً', size_hint_y=None, height=55, font_size='16sp', font_name=FONT_NAME)
+        popup = Popup(title=title, content=content, size_hint=(0.85, 0.4), title_font=FONT_NAME)
         btn.bind(on_press=popup.dismiss)
         content.add_widget(btn)
         popup.open()
