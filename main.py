@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Mostafa - Vodafone Charge App
-Works directly on Vodafone data
+With Admin Panel for Points Recharge Requests
 """
 
 from kivy.app import App
@@ -15,34 +15,12 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
 from kivy.uix.progressbar import ProgressBar
 from kivy.core.window import Window
-from kivy.core.text import LabelBase
 from kivy.clock import Clock
 from kivy.properties import StringProperty, NumericProperty
 import requests
 import json
 import threading
-import os
 from datetime import datetime
-
-# ==================== REGISTER ARABIC FONT ====================
-FONT_NAME = 'Roboto'
-
-FONT_PATHS = [
-    'Cairo-Regular.ttf',
-    'fonts/Cairo-Regular.ttf',
-    os.path.join(os.path.dirname(__file__), 'Cairo-Regular.ttf'),
-    os.path.join(os.path.dirname(__file__), 'fonts', 'Cairo-Regular.ttf'),
-]
-
-for path in FONT_PATHS:
-    if os.path.exists(path):
-        try:
-            LabelBase.register(name='ArabicFont', fn_regular=path)
-            FONT_NAME = 'ArabicFont'
-            print(f"[INFO] Arabic font loaded from: {path}")
-            break
-        except Exception as e:
-            print(f"[WARNING] Failed to load font from {path}: {e}")
 
 # ==================== CONFIG ====================
 SUPABASE_URL = 'https://qippgvyupkeruvzkfdkz.supabase.co'
@@ -87,67 +65,49 @@ class VodafoneApp(App):
     def build(self):
         Window.clearcolor = (0.03, 0, 0, 1)
         self.title = 'Mostafa - شحن كروت فودافون'
-        self.main_layout = BoxLayout(orientation='vertical', padding=40, spacing=25)
+        self.main_layout = BoxLayout(orientation='vertical', padding=15, spacing=10)
         self.show_login()
         return self.main_layout
 
     def show_login(self):
         self.main_layout.clear_widgets()
 
-        # ====== شعار ======
-        logo_container = BoxLayout(size_hint_y=None, height=200, padding=30)
-
-        logo_text = '[b][color=E60000]VODAFONE[/color][/b]\n[color=FFFFFF]Mostafa[/color]'
-        logo = Label(
-            text=logo_text,
-            markup=True,
-            font_size='40sp',
-            font_name=FONT_NAME
-        )
-        logo_container.add_widget(logo)
-        self.main_layout.add_widget(logo_container)
-
         title = Label(
-            text='[b]شحن كروت فودافون[/b]',
+            text='[b][color=E60000]Mostafa[/color][/b]\nشحن كروت فودافون',
             markup=True,
-            font_size='26sp',
+            font_size='22sp',
             size_hint_y=None,
-            height=70,
-            font_name=FONT_NAME,
-            color=(1, 1, 1, 1)
+            height=100
         )
         self.main_layout.add_widget(title)
-        self.main_layout.add_widget(Label(size_hint_y=0.4))
+        self.main_layout.add_widget(Label(size_hint_y=0.3))
 
         self.phone_input = TextInput(
             hint_text='رقم الهاتف (01XXXXXXXXX)',
             multiline=False,
             input_filter='int',
             size_hint_y=None,
-            height=80,
+            height=55,
             background_color=(0.1, 0.1, 0.1, 1),
             foreground_color=(1, 1, 1, 1),
             hint_text_color=(0.5, 0.5, 0.5, 1),
-            padding=(25, 20),
-            font_size='22sp',
-            font_name=FONT_NAME
+            padding=(15, 10),
+            font_size='16sp'
         )
         self.main_layout.add_widget(self.phone_input)
-        self.main_layout.add_widget(Label(size_hint_y=0.2))
 
         login_btn = Button(
             text='دخول',
             size_hint_y=None,
-            height=80,
+            height=55,
             background_color=(0.9, 0, 0, 1),
             color=(1, 1, 1, 1),
-            font_size='22sp',
-            bold=True,
-            font_name=FONT_NAME
+            font_size='16sp',
+            bold=True
         )
         login_btn.bind(on_press=self.do_login)
         self.main_layout.add_widget(login_btn)
-        self.main_layout.add_widget(Label(size_hint_y=0.6))
+        self.main_layout.add_widget(Label(size_hint_y=0.5))
 
     def do_login(self, instance):
         phone = self.phone_input.text
@@ -158,7 +118,11 @@ class VodafoneApp(App):
         self.user_phone = phone
         self.is_admin = (phone == ADMIN_PHONE)
         self.load_user_data()
-        self.show_home()
+
+        if self.is_admin:
+            self.show_admin_panel()
+        else:
+            self.show_home()
 
     def load_user_data(self):
         try:
@@ -189,68 +153,39 @@ class VodafoneApp(App):
     def show_home(self):
         self.main_layout.clear_widgets()
 
-        # ====== Header ======
-        header = BoxLayout(size_hint_y=None, height=100, spacing=15)
+        header = BoxLayout(size_hint_y=None, height=70, spacing=10)
 
         points_btn = Button(
             text=f'⭐ {self.points} نقطة',
-            size_hint_x=0.35,
+            size_hint_x=0.5,
             background_color=(0.97, 0.79, 0.28, 0.2),
             color=(0.97, 0.79, 0.28, 1),
-            font_size='16sp',
-            bold=True,
-            font_name=FONT_NAME
+            font_size='14sp',
+            bold=True
         )
         points_btn.bind(on_press=self.show_points_dialog)
         header.add_widget(points_btn)
 
-        history_btn = Button(
-            text='📋 سجل',
-            size_hint_x=0.25,
-            background_color=(0.2, 0.5, 0.9, 0.3),
-            color=(1, 1, 1, 1),
-            font_size='14sp',
-            font_name=FONT_NAME
-        )
-        history_btn.bind(on_press=self.show_history)
-        header.add_widget(history_btn)
-
         recharge_btn = Button(
             text='شحن نقاط',
-            size_hint_x=0.25,
+            size_hint_x=0.5,
             background_color=(0.97, 0.79, 0.28, 0.3),
             color=(0.97, 0.79, 0.28, 1),
             font_size='14sp',
-            bold=True,
-            font_name=FONT_NAME
+            bold=True
         )
         recharge_btn.bind(on_press=self.show_recharge_dialog)
         header.add_widget(recharge_btn)
 
-        if self.is_admin:
-            admin_btn = Button(
-                text='⚙️',
-                size_hint_x=0.15,
-                background_color=(0.2, 0.6, 1, 1),
-                color=(1, 1, 1, 1),
-                font_size='24sp',
-                font_name=FONT_NAME
-            )
-            admin_btn.bind(on_press=self.show_admin_panel)
-            header.add_widget(admin_btn)
-
         self.main_layout.add_widget(header)
-        self.main_layout.add_widget(Label(size_hint_y=None, height=25))
 
-        # ====== Category buttons ======
-        cat_layout = BoxLayout(size_hint_y=None, height=70, spacing=20, padding=(15, 0))
+        cat_layout = BoxLayout(size_hint_y=None, height=50, spacing=10)
 
         all_btn = Button(
             text='الكل',
             background_color=(0.9, 0, 0, 0.3),
             color=(1, 1, 1, 1),
-            font_size='16sp',
-            font_name=FONT_NAME
+            font_size='12sp'
         )
         all_btn.bind(on_press=lambda x: self.show_products('all'))
         cat_layout.add_widget(all_btn)
@@ -259,8 +194,7 @@ class VodafoneApp(App):
             text='⚡ فكة',
             background_color=(0.9, 0, 0, 0.3),
             color=(1, 1, 1, 1),
-            font_size='16sp',
-            font_name=FONT_NAME
+            font_size='12sp'
         )
         fakka_btn.bind(on_press=lambda x: self.show_products('fakka'))
         cat_layout.add_widget(fakka_btn)
@@ -269,18 +203,16 @@ class VodafoneApp(App):
             text='🔥 مارد',
             background_color=(0.9, 0, 0, 0.3),
             color=(1, 1, 1, 1),
-            font_size='16sp',
-            font_name=FONT_NAME
+            font_size='12sp'
         )
         mared_btn.bind(on_press=lambda x: self.show_products('mared'))
         cat_layout.add_widget(mared_btn)
 
         self.main_layout.add_widget(cat_layout)
-        self.main_layout.add_widget(Label(size_hint_y=None, height=20))
 
-        # ====== Products area ======
         self.products_layout = BoxLayout(orientation='vertical')
         self.main_layout.add_widget(self.products_layout)
+
         self.show_products('all')
 
     def show_products(self, category):
@@ -294,20 +226,18 @@ class VodafoneApp(App):
             products = MARED_PRODUCTS
 
         scroll = ScrollView()
-        grid = GridLayout(cols=2, spacing=20, padding=20, size_hint_y=None)
+        grid = GridLayout(cols=2, spacing=10, padding=10, size_hint_y=None)
         grid.bind(minimum_height=grid.setter('height'))
 
         for product in products:
-            btn_text = f'[b]{product["name"]}[/b]\n{product["price"]} جنيه\n{product.get("units", 0)} {product.get("type", "وحدة")}'
             btn = Button(
-                text=btn_text,
+                text=f'[b]{product["name"]}[/b]\n{product["price"]} جنيه\n{product.get("units", 0)} {product.get("type", "وحدة")}',
                 markup=True,
                 size_hint_y=None,
-                height=170,
+                height=120,
                 background_color=(0.9, 0, 0, 0.2),
                 color=(1, 1, 1, 1),
-                font_size='16sp',
-                font_name=FONT_NAME
+                font_size='12sp'
             )
             btn.bind(on_press=lambda x, p=product: self.show_charge_dialog(p))
             grid.add_widget(btn)
@@ -316,70 +246,59 @@ class VodafoneApp(App):
         self.products_layout.add_widget(scroll)
 
     def show_charge_dialog(self, product):
-        content = BoxLayout(orientation='vertical', spacing=25, padding=30)
+        content = BoxLayout(orientation='vertical', spacing=15, padding=20)
 
-        info_text = f'[b]{product["name"]}[/b]\nالسعر: {product["price"]} جنيه\nسيتم خصم نقطة واحدة'
         info = Label(
-            text=info_text,
+            text=f'[b]{product["name"]}[/b]\nالسعر: {product["price"]} جنيه\nسيتم خصم نقطة واحدة',
             markup=True,
-            font_size='18sp',
+            font_size='14sp',
             color=(1, 1, 1, 1),
             size_hint_y=None,
-            height=120,
-            font_name=FONT_NAME
+            height=80
         )
         content.add_widget(info)
-        content.add_widget(Label(size_hint_y=None, height=15))
 
         target_input = TextInput(
             hint_text='رقم الهاتف للشحن',
             multiline=False,
             input_filter='int',
             size_hint_y=None,
-            height=70,
+            height=50,
             background_color=(0.1, 0.1, 0.1, 1),
             foreground_color=(1, 1, 1, 1),
             hint_text_color=(0.5, 0.5, 0.5, 1),
-            padding=(25, 20),
-            font_size='18sp',
-            font_name=FONT_NAME
+            padding=(15, 10),
+            font_size='14sp'
         )
         content.add_widget(target_input)
-        content.add_widget(Label(size_hint_y=None, height=15))
 
         pin_input = TextInput(
             hint_text='الرقم السري للمحفظة',
             multiline=False,
             password=True,
             size_hint_y=None,
-            height=70,
+            height=50,
             background_color=(0.1, 0.1, 0.1, 1),
             foreground_color=(1, 1, 1, 1),
             hint_text_color=(0.5, 0.5, 0.5, 1),
-            padding=(25, 20),
-            font_size='18sp',
-            font_name=FONT_NAME
+            padding=(15, 10),
+            font_size='14sp'
         )
         content.add_widget(pin_input)
-        content.add_widget(Label(size_hint_y=None, height=20))
 
-        btn_layout = BoxLayout(size_hint_y=None, height=70, spacing=20)
+        btn_layout = BoxLayout(size_hint_y=None, height=50, spacing=10)
 
         cancel_btn = Button(
             text='إلغاء',
             background_color=(0.5, 0.5, 0.5, 1),
-            color=(1, 1, 1, 1),
-            font_size='16sp',
-            font_name=FONT_NAME
+            color=(1, 1, 1, 1)
         )
 
         charge_btn = Button(
             text='تأكيد الشحن',
             background_color=(0.9, 0, 0, 1),
             color=(1, 1, 1, 1),
-            bold=True,
-            font_size='16sp',
-            font_name=FONT_NAME
+            bold=True
         )
 
         btn_layout.add_widget(cancel_btn)
@@ -389,9 +308,8 @@ class VodafoneApp(App):
         popup = Popup(
             title=f'شحن {product["name"]}',
             content=content,
-            size_hint=(0.9, 0.8),
-            auto_dismiss=False,
-            title_font=FONT_NAME
+            size_hint=(0.9, 0.7),
+            auto_dismiss=False
         )
 
         cancel_btn.bind(on_press=popup.dismiss)
@@ -419,17 +337,16 @@ class VodafoneApp(App):
         popup.open()
 
     def charge_card(self, msisdn, pin, product):
-        loading_content = BoxLayout(orientation='vertical', padding=40, spacing=20)
-        loading_content.add_widget(Label(text='جاري الشحن...', font_size='20sp', font_name=FONT_NAME))
-        progress = ProgressBar(max=100, value=50, size_hint_y=None, height=25)
+        loading_content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        loading_content.add_widget(Label(text='جاري الشحن...', font_size='16sp'))
+        progress = ProgressBar(max=100, value=50)
         loading_content.add_widget(progress)
 
         loading_popup = Popup(
             title='الرجاء الانتظار',
             content=loading_content,
-            size_hint=(0.8, 0.4),
-            auto_dismiss=False,
-            title_font=FONT_NAME
+            size_hint=(0.8, 0.3),
+            auto_dismiss=False
         )
         loading_popup.open()
 
@@ -484,7 +401,7 @@ class VodafoneApp(App):
         )
 
         if resp1.status_code != 200:
-            return {'success': False, 'message': 'فشل الاتصال الأولي بفودافون\nتأكد من تشغيل داتا فودافون'}
+            return {'success': False, 'message': 'فشل الاتصال الأولي بفودافون'}
 
         seamless_token = resp1.json().get('seamlessToken')
 
@@ -598,400 +515,322 @@ class VodafoneApp(App):
                     'product_id': product['id'],
                     'price': product['price'],
                     'target_phone': phone,
-                    'status': status,
-                    'created_at': datetime.now().isoformat()
+                    'status': status
                 },
                 timeout=10
             )
         except:
             pass
 
-    def show_history(self, instance=None):
-        content = BoxLayout(orientation='vertical', spacing=15, padding=25)
-
-        title = Label(
-            text='[b]📋 سجل العمليات[/b]',
+    def show_points_dialog(self, instance=None):
+        content = BoxLayout(orientation='vertical', spacing=10, padding=20)
+        content.add_widget(Label(
+            text=f'[b][color=F7C948]⭐ {self.points} نقطة[/color][/b]',
             markup=True,
-            font_size='22sp',
-            size_hint_y=None,
-            height=60,
-            font_name=FONT_NAME,
-            color=(1, 1, 1, 1)
-        )
-        content.add_widget(title)
-
-        history = self.get_user_history()
-
-        scroll = ScrollView()
-        layout = BoxLayout(orientation='vertical', spacing=15, padding=15, size_hint_y=None)
-        layout.bind(minimum_height=layout.setter('height'))
-
-        if not history:
-            layout.add_widget(Label(
-                text='لا توجد عمليات حتى الآن',
-                font_size='16sp',
-                color=(0.7, 0.7, 0.7, 1),
-                font_name=FONT_NAME
-            ))
-        else:
-            for item in history:
-                status_text = '✅ نجاح' if item['status'] == 'success' else '❌ فشل'
-
-                card = BoxLayout(orientation='vertical', spacing=8, padding=20, size_hint_y=None, height=150)
-
-                info_text = f'[b]{item["product"]}[/b]\n📱 {item["target_phone"]}\n💰 {item["price"]} جنيه | {status_text}'
-                info = Label(
-                    text=info_text,
-                    markup=True,
-                    font_size='15sp',
-                    color=(1, 1, 1, 1),
-                    font_name=FONT_NAME
-                )
-                card.add_widget(info)
-                layout.add_widget(card)
-
-        scroll.add_widget(layout)
-        content.add_widget(scroll)
+            font_size='24sp'
+        ))
+        content.add_widget(Label(
+            text='كل شحنة تخصم نقطة واحدة',
+            font_size='12sp',
+            color=(0.7, 0.7, 0.7, 1)
+        ))
 
         close_btn = Button(
             text='إغلاق',
             size_hint_y=None,
-            height=65,
-            background_color=(0.5, 0.5, 0.5, 1),
-            font_size='16sp',
-            font_name=FONT_NAME
+            height=50,
+            background_color=(0.5, 0.5, 0.5, 1)
         )
 
-        popup = Popup(title='السجل', content=content, size_hint=(0.9, 0.85), title_font=FONT_NAME)
+        popup = Popup(title='رصيد النقاط', content=content, size_hint=(0.8, 0.4))
         close_btn.bind(on_press=popup.dismiss)
         content.add_widget(close_btn)
         popup.open()
 
-    def get_user_history(self):
-        try:
-            headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': f'Bearer {SUPABASE_KEY}'
-            }
-            response = requests.get(
-                f'{SUPABASE_URL}/rest/v1/operations?user_phone=eq.{self.user_phone}&order=created_at.desc&limit=50',
-                headers=headers,
-                timeout=10
-            )
-            return response.json()
-        except:
-            return []
-
-    def show_admin_panel(self, instance=None):
-        self.main_layout.clear_widgets()
-
-        title = Label(
-            text='[b][color=E60000]⚙️ لوحة تحكم الأدمن[/color][/b]',
-            markup=True,
-            font_size='26sp',
-            size_hint_y=None,
-            height=70,
-            font_name=FONT_NAME
-        )
-        self.main_layout.add_widget(title)
-
-        stats = self.get_admin_stats()
-        stats_text = f'📊 إجمالي اليوم: {stats["today_total"]} جنيه | ⭐ النقاط المباعة: {stats["points_sold"]}'
-        stats_label = Label(
-            text=stats_text,
-            font_size='15sp',
-            color=(0.97, 0.79, 0.28, 1),
-            size_hint_y=None,
-            height=50,
-            font_name=FONT_NAME
-        )
-        self.main_layout.add_widget(stats_label)
-
-        pending = self.get_pending_requests()
-
-        scroll = ScrollView()
-        layout = BoxLayout(orientation='vertical', spacing=20, padding=20, size_hint_y=None)
-        layout.bind(minimum_height=layout.setter('height'))
-
-        if not pending:
-            layout.add_widget(Label(
-                text='لا توجد طلبات قيد الانتظار',
-                font_size='16sp',
-                color=(0.7, 0.7, 0.7, 1),
-                font_name=FONT_NAME
-            ))
-        else:
-            for req in pending:
-                card = BoxLayout(orientation='vertical', spacing=12, padding=25, size_hint_y=None, height=240)
-
-                info_text = f'👤 [b]{req["user_phone"]}[/b]\n⭐ {req["points"]} نقطة - 💰 {req["price"]} جنيه\n⏳ في الانتظار'
-                info = Label(
-                    text=info_text,
-                    markup=True,
-                    font_size='16sp',
-                    color=(1, 1, 1, 1),
-                    font_name=FONT_NAME
-                )
-                card.add_widget(info)
-
-                btn_layout = BoxLayout(size_hint_y=None, height=60, spacing=15)
-
-                approve_btn = Button(
-                    text='✅ تأكيد',
-                    background_color=(0, 0.7, 0, 1),
-                    color=(1, 1, 1, 1),
-                    font_size='16sp',
-                    font_name=FONT_NAME
-                )
-                approve_btn.bind(on_press=lambda x, r=req: self.approve_recharge(r))
-
-                reject_btn = Button(
-                    text='❌ رفض',
-                    background_color=(0.8, 0, 0, 1),
-                    color=(1, 1, 1, 1),
-                    font_size='16sp',
-                    font_name=FONT_NAME
-                )
-                reject_btn.bind(on_press=lambda x, r=req: self.reject_recharge(r))
-
-                btn_layout.add_widget(approve_btn)
-                btn_layout.add_widget(reject_btn)
-                card.add_widget(btn_layout)
-
-                layout.add_widget(card)
-
-        scroll.add_widget(layout)
-        self.main_layout.add_widget(scroll)
-
-        back_btn = Button(
-            text='⬅️ رجوع للرئيسية',
-            size_hint_y=None,
-            height=65,
-            background_color=(0.5, 0.5, 0.5, 1),
-            font_size='16sp',
-            font_name=FONT_NAME
-        )
-        back_btn.bind(on_press=lambda x: self.show_home())
-        self.main_layout.add_widget(back_btn)
-
-    def get_pending_requests(self):
-        try:
-            headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': f'Bearer {SUPABASE_KEY}'
-            }
-            response = requests.get(
-                f'{SUPABASE_URL}/rest/v1/recharge_requests?status=eq.pending&order=created_at.desc',
-                headers=headers,
-                timeout=10
-            )
-            return response.json()
-        except:
-            return []
-
-    def get_admin_stats(self):
-        try:
-            headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': f'Bearer {SUPABASE_KEY}'
-            }
-            today = datetime.now().strftime('%Y-%m-%d')
-
-            resp1 = requests.get(
-                f'{SUPABASE_URL}/rest/v1/recharge_requests?status=eq.approved&created_at=gte.{today}',
-                headers=headers,
-                timeout=10
-            )
-            today_data = resp1.json()
-            today_total = sum(item['price'] for item in today_data)
-            points_sold = sum(item['points'] for item in today_data)
-
-            return {'today_total': today_total, 'points_sold': points_sold}
-        except:
-            return {'today_total': 0, 'points_sold': 0}
-
-    def approve_recharge(self, request):
-        try:
-            headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': f'Bearer {SUPABASE_KEY}',
-                'Content-Type': 'application/json'
-            }
-
-            requests.patch(
-                f'{SUPABASE_URL}/rest/v1/recharge_requests?id=eq.{request["id"]}',
-                headers=headers,
-                json={'status': 'approved'},
-                timeout=10
-            )
-
-            resp = requests.get(
-                f'{SUPABASE_URL}/rest/v1/users?phone=eq.{request["user_phone"]}',
-                headers=headers,
-                timeout=10
-            )
-            user_data = resp.json()
-
-            if user_data:
-                new_points = user_data[0].get('points', 0) + request['points']
-                requests.patch(
-                    f'{SUPABASE_URL}/rest/v1/users?phone=eq.{request["user_phone"]}',
-                    headers=headers,
-                    json={'points': new_points},
-                    timeout=10
-                )
-
-            self.show_popup('تم!', f'✅ تم تأكيد شحن {request["points"]} نقطة\nلـ {request["user_phone"]}')
-            self.show_admin_panel()
-
-        except Exception as e:
-            self.show_popup('خطأ', str(e))
-
-    def reject_recharge(self, request):
-        try:
-            headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': f'Bearer {SUPABASE_KEY}',
-                'Content-Type': 'application/json'
-            }
-
-            requests.patch(
-                f'{SUPABASE_URL}/rest/v1/recharge_requests?id=eq.{request["id"]}',
-                headers=headers,
-                json={'status': 'rejected'},
-                timeout=10
-            )
-
-            self.show_popup('تم', f'❌ تم رفض الطلب\nلـ {request["user_phone"]}')
-            self.show_admin_panel()
-
-        except Exception as e:
-            self.show_popup('خطأ', str(e))
-
     def show_recharge_dialog(self, instance=None):
-        content = BoxLayout(orientation='vertical', spacing=15, padding=30)
+        content = BoxLayout(orientation='vertical', spacing=10, padding=20)
 
         content.add_widget(Label(
             text='اختر الباقة:',
-            font_size='20sp',
-            color=(1, 1, 1, 1),
-            font_name=FONT_NAME
+            font_size='14sp',
+            color=(1, 1, 1, 1)
         ))
-        content.add_widget(Label(size_hint_y=None, height=15))
 
         for pkg in POINTS_PACKAGES:
             btn = Button(
                 text=pkg['label'],
                 size_hint_y=None,
-                height=65,
+                height=50,
                 background_color=(0.97, 0.79, 0.28, 0.2),
-                color=(0.97, 0.79, 0.28, 1),
-                font_size='16sp',
-                font_name=FONT_NAME
+                color=(0.97, 0.79, 0.28, 1)
             )
             btn.bind(on_press=lambda x, p=pkg: self.send_recharge_request(p))
             content.add_widget(btn)
 
-        content.add_widget(Label(size_hint_y=None, height=15))
-
         close_btn = Button(
             text='إلغاء',
             size_hint_y=None,
-            height=65,
-            background_color=(0.5, 0.5, 0.5, 1),
-            font_size='16sp',
-            font_name=FONT_NAME
+            height=50,
+            background_color=(0.5, 0.5, 0.5, 1)
         )
 
-        popup = Popup(title='شحن نقاط', content=content, size_hint=(0.9, 0.8), title_font=FONT_NAME)
+        popup = Popup(title='شحن نقاط', content=content, size_hint=(0.9, 0.7))
         close_btn.bind(on_press=popup.dismiss)
         content.add_widget(close_btn)
         popup.open()
 
     def send_recharge_request(self, package):
+        # Save to Supabase
         try:
             headers = {
                 'apikey': SUPABASE_KEY,
                 'Authorization': f'Bearer {SUPABASE_KEY}',
                 'Content-Type': 'application/json'
             }
-
             requests.post(
-                f'{SUPABASE_URL}/rest/v1/recharge_requests',
+                f'{SUPABASE_URL}/rest/v1/charge_requests',
                 headers=headers,
                 json={
                     'user_phone': self.user_phone,
                     'points': package['points'],
                     'price': package['price'],
                     'status': 'pending',
-                    'admin_phone': ADMIN_PHONE,
                     'created_at': datetime.now().isoformat()
                 },
                 timeout=10
             )
-
-            self.open_whatsapp(package)
-
-            self.show_popup('تم إرسال الطلب', '✅ تم إرسال طلبك\nفي انتظار تأكيد الأدمن')
-
         except Exception as e:
-            self.show_popup('خطأ', str(e))
+            print(f'Error saving request: {e}')
 
-    def open_whatsapp(self, package):
-        try:
-            import webbrowser
-            import urllib.parse
-
-            msg = (
-                "🔔 طلب شحن نقاط جديد!" + "\n\n" +
-                "👤 العميل: " + self.user_phone + "\n" +
-                "⭐ النقاط: " + str(package['points']) + "\n" +
-                "💰 المبلغ: " + str(package['price']) + " جنيه" + "\n\n" +
-                "📱 افتح التطبيق للتأكيد"
-            )
-
-            url = "https://wa.me/2" + ADMIN_PHONE + "?text=" + urllib.parse.quote(msg)
-            webbrowser.open(url)
-
-        except Exception as e:
-            print("WhatsApp error: " + str(e))
-
-    def show_points_dialog(self, instance=None):
-        content = BoxLayout(orientation='vertical', spacing=20, padding=30)
-        content.add_widget(Label(
-            text=f'[b][color=F7C948]⭐ {self.points} نقطة[/color][/b]',
-            markup=True,
-            font_size='32sp',
-            font_name=FONT_NAME
-        ))
-        content.add_widget(Label(
-            text='كل شحنة تخصم نقطة واحدة',
-            font_size='16sp',
-            color=(0.7, 0.7, 0.7, 1),
-            font_name=FONT_NAME
-        ))
-        content.add_widget(Label(size_hint_y=None, height=20))
-
-        close_btn = Button(
-            text='إغلاق',
-            size_hint_y=None,
-            height=65,
-            background_color=(0.5, 0.5, 0.5, 1),
-            font_size='16sp',
-            font_name=FONT_NAME
+        # Open WhatsApp
+        msg = (
+            f"🔔 طلب شحن نقاط جديد!\n"
+            f"👤 العميل: {self.user_phone}\n"
+            f"⭐ النقاط: {package['points']}\n"
+            f"💰 المبلغ: {package['price']} جنيه"
         )
 
-        popup = Popup(title='رصيد النقاط', content=content, size_hint=(0.8, 0.5), title_font=FONT_NAME)
-        close_btn.bind(on_press=popup.dismiss)
-        content.add_widget(close_btn)
-        popup.open()
+        import webbrowser
+        webbrowser.open(f'https://wa.me/2{ADMIN_PHONE}?text={msg}')
+
+        self.show_popup('تم', 'تم إرسال طلبك\nسيتم المراجعة قريباً')
+
+    # ==================== ADMIN PANEL ====================
+    def show_admin_panel(self):
+        self.main_layout.clear_widgets()
+
+        # Header
+        header = BoxLayout(size_hint_y=None, height=70, spacing=10)
+
+        title = Label(
+            text='[b][color=E60000]لوحة الأدمن[/color][/b]',
+            markup=True,
+            font_size='20sp',
+            size_hint_x=0.7
+        )
+        header.add_widget(title)
+
+        refresh_btn = Button(
+            text='🔄',
+            size_hint_x=0.15,
+            background_color=(0.2, 0.6, 1, 1),
+            font_size='20sp'
+        )
+        refresh_btn.bind(on_press=lambda x: self.load_admin_requests())
+        header.add_widget(refresh_btn)
+
+        logout_btn = Button(
+            text='خروج',
+            size_hint_x=0.15,
+            background_color=(0.9, 0, 0, 1),
+            color=(1, 1, 1, 1),
+            font_size='12sp'
+        )
+        logout_btn.bind(on_press=lambda x: self.show_login())
+        header.add_widget(logout_btn)
+
+        self.main_layout.add_widget(header)
+
+        # Stats
+        stats = BoxLayout(size_hint_y=None, height=50, spacing=10)
+        self.pending_label = Label(
+            text='جاري التحميل...',
+            color=(0.97, 0.79, 0.28, 1),
+            font_size='14sp'
+        )
+        stats.add_widget(self.pending_label)
+        self.main_layout.add_widget(stats)
+
+        # Requests list
+        self.requests_layout = BoxLayout(orientation='vertical')
+        self.main_layout.add_widget(self.requests_layout)
+
+        self.load_admin_requests()
+
+        # Auto refresh every 30 seconds
+        Clock.schedule_interval(lambda dt: self.load_admin_requests(), 30)
+
+    def load_admin_requests(self, instance=None):
+        def fetch_requests():
+            try:
+                headers = {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': f'Bearer {SUPABASE_KEY}'
+                }
+
+                # Get pending requests
+                resp = requests.get(
+                    f'{SUPABASE_URL}/rest/v1/charge_requests?status=eq.pending&order=created_at.desc',
+                    headers=headers,
+                    timeout=10
+                )
+                requests_list = resp.json()
+
+                # Get all users with their points
+                users_resp = requests.get(
+                    f'{SUPABASE_URL}/rest/v1/users?select=phone,points',
+                    headers=headers,
+                    timeout=10
+                )
+                users = {u['phone']: u['points'] for u in users_resp.json()}
+
+                Clock.schedule_once(lambda dt: self.display_requests(requests_list, users), 0)
+
+            except Exception as e:
+                print(f'Error loading requests: {e}')
+                Clock.schedule_once(lambda dt: self.show_popup('خطأ', 'فشل تحميل الطلبات'), 0)
+
+        threading.Thread(target=fetch_requests).start()
+
+    def display_requests(self, requests_list, users):
+        self.requests_layout.clear_widgets()
+
+        pending_count = len(requests_list)
+        self.pending_label.text = f'📋 طلبات قيد الانتظار: {pending_count}'
+
+        if not requests_list:
+            self.requests_layout.add_widget(Label(
+                text='لا توجد طلبات حالياً',
+                color=(0.5, 0.5, 0.5, 1),
+                font_size='16sp'
+            ))
+            return
+
+        scroll = ScrollView()
+        layout = BoxLayout(orientation='vertical', spacing=10, padding=10, size_hint_y=None)
+        layout.bind(minimum_height=layout.setter('height'))
+
+        for req in requests_list:
+            req_id = req['id']
+            phone = req['user_phone']
+            points = req['points']
+            price = req['price']
+            created = req.get('created_at', 'غير معروف')[:16]
+            current_points = users.get(phone, 0)
+
+            card = BoxLayout(
+                orientation='vertical',
+                spacing=5,
+                padding=15,
+                size_hint_y=None,
+                height=180
+            )
+
+            info = Label(
+                text=(
+                    f'[b]👤 {phone}[/b]\n'
+                    f'⭐ نقاط مطلوبة: {points}\n'
+                    f'💰 السعر: {price} جنيه\n'
+                    f'📊 نقاط حالية: {current_points}\n'
+                    f'🕐 {created}'
+                ),
+                markup=True,
+                font_size='13sp',
+                color=(1, 1, 1, 1),
+                size_hint_y=None,
+                height=120
+            )
+            card.add_widget(info)
+
+            btn_layout = BoxLayout(size_hint_y=None, height=45, spacing=10)
+
+            reject_btn = Button(
+                text='❌ رفض',
+                background_color=(0.8, 0, 0, 1),
+                color=(1, 1, 1, 1),
+                font_size='12sp'
+            )
+            reject_btn.bind(on_press=lambda x, rid=req_id: self.handle_request(rid, 'rejected', phone, 0))
+
+            approve_btn = Button(
+                text='✅ موافقة',
+                background_color=(0, 0.7, 0.3, 1),
+                color=(1, 1, 1, 1),
+                font_size='12sp'
+            )
+            approve_btn.bind(on_press=lambda x, rid=req_id, p=phone, pts=points: self.handle_request(rid, 'approved', p, pts))
+
+            btn_layout.add_widget(reject_btn)
+            btn_layout.add_widget(approve_btn)
+            card.add_widget(btn_layout)
+
+            layout.add_widget(card)
+
+        scroll.add_widget(layout)
+        self.requests_layout.add_widget(scroll)
+
+    def handle_request(self, req_id, status, phone, points_to_add):
+        def process():
+            try:
+                headers = {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': f'Bearer {SUPABASE_KEY}',
+                    'Content-Type': 'application/json'
+                }
+
+                # Update request status
+                requests.patch(
+                    f'{SUPABASE_URL}/rest/v1/charge_requests?id=eq.{req_id}',
+                    headers=headers,
+                    json={'status': status},
+                    timeout=10
+                )
+
+                if status == 'approved':
+                    # Get current points
+                    resp = requests.get(
+                        f'{SUPABASE_URL}/rest/v1/users?phone=eq.{phone}&select=points',
+                        headers=headers,
+                        timeout=10
+                    )
+                    data = resp.json()
+
+                    if data:
+                        new_points = data[0]['points'] + points_to_add
+                        requests.patch(
+                            f'{SUPABASE_URL}/rest/v1/users?phone=eq.{phone}',
+                            headers=headers,
+                            json={'points': new_points},
+                            timeout=10
+                        )
+
+                Clock.schedule_once(lambda dt: self.load_admin_requests(), 0)
+
+                msg = 'تمت الموافقة وإضافة النقاط' if status == 'approved' else 'تم رفض الطلب'
+                Clock.schedule_once(lambda dt: self.show_popup('تم', msg), 0)
+
+            except Exception as e:
+                print(f'Error handling request: {e}')
+                Clock.schedule_once(lambda dt: self.show_popup('خطأ', 'فشل معالجة الطلب'), 0)
+
+        threading.Thread(target=process).start()
 
     def show_popup(self, title, message):
-        content = BoxLayout(orientation='vertical', padding=30, spacing=20)
-        content.add_widget(Label(text=message, font_size='18sp', font_name=FONT_NAME))
+        content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        content.add_widget(Label(text=message, font_size='14sp'))
 
-        btn = Button(text='حسناً', size_hint_y=None, height=65, font_size='16sp', font_name=FONT_NAME)
-        popup = Popup(title=title, content=content, size_hint=(0.8, 0.5), title_font=FONT_NAME)
+        btn = Button(text='حسناً', size_hint_y=None, height=50)
+        popup = Popup(title=title, content=content, size_hint=(0.8, 0.4))
         btn.bind(on_press=popup.dismiss)
         content.add_widget(btn)
         popup.open()
