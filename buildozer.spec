@@ -1,16 +1,17 @@
 [app]
-title = Vodafone Charge
-package.name = vodafonecharge
+title = Mostafa - Vodafone Charge
+package.name = mostafavodafone
 package.domain = org.mostafa
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,ttf,txt
-version = 0.1
-requirements = python3,kivy,requests,urllib3,charset-normalizer,certifi,idna
+source.include_exts = py,png,jpg,kv,atlas,ttf
+version = 1.0
+requirements = python3,kivy==2.3.0,kivymd==1.1.1,requests,urllib3,charset-normalizer,certifi,idna,pyjnius
 orientation = portrait
 fullscreen = 0
 android.permissions = INTERNET,ACCESS_NETWORK_STATE,READ_PHONE_STATE
 android.api = 33
 android.minapi = 21
+android.sdk = 33
 android.ndk = 25c
 android.ndk_api = 21
 android.private_storage = True
