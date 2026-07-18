@@ -2,25 +2,28 @@
 # -*- coding: utf-8 -*-
 """
 Mostafa - Vodafone Charge App
-With built-in Arabic support (no external libraries needed)
+KivyMD version with full Arabic support
 """
 
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.popup import Popup
-from kivy.uix.progressbar import ProgressBar
-from kivy.uix.widget import Widget
+from kivymd.app import MDApp
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.button import MDRaisedButton, MDFlatButton, MDRoundFlatButton
+from kivymd.uix.label import MDLabel
+from kivymd.uix.textfield import MDTextField
+from kivymd.uix.card import MDCard
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.scrollview import MDScrollView
+from kivymd.uix.progressbar import MDProgressBar
+from kivymd.uix.toolbar import MDTopAppBar
+from kivymd.uix.snackbar import MDSnackbar
+from kivymd.uix.list import MDList, OneLineListItem
 from kivy.core.window import Window
-from kivy.core.text import LabelBase
 from kivy.clock import Clock
 from kivy.properties import StringProperty, NumericProperty
 from kivy.utils import platform
-from kivy.graphics import Color, RoundedRectangle
+from kivy.metrics import dp
 import requests
 import json
 import threading
@@ -29,77 +32,19 @@ import time
 from datetime import datetime
 from collections import defaultdict
 
-# ==================== BUILT-IN ARABIC SUPPORT ====================
-ARABIC_LETTERS = set('ابتثجحخدذرزسشصضطظعغفقكلمنهويىةئؤءاأإآ ')
-
+# ==================== ARABIC TEXT FIX ====================
 def ar(text):
-    """
-    Built-in Arabic text handler
-    Reverses text order for RTL display in Kivy
-    """
-    if not text:
-        return text
-    
-    # Split into lines and reverse each line
-    lines = text.split('\n')
-    result_lines = []
-    
-    for line in lines:
-        chars = list(line)
-        # Reverse the order of characters for RTL
-        chars.reverse()
-        result_lines.append(''.join(chars))
-    
-    return '\n'.join(result_lines)
+    """Arabic text handler - KivyMD handles RTL better"""
+    return text
 
 # ==================== COLORS ====================
 COLOR_BG = (0.05, 0.05, 0.05, 1)
-COLOR_CARD = (0.1, 0.1, 0.1, 1)
+COLOR_CARD = (0.12, 0.12, 0.12, 1)
 COLOR_RED = (0.9, 0.22, 0.27, 1)
-COLOR_RED_LIGHT = (0.9, 0.22, 0.27, 0.15)
 COLOR_GOLD = (0.96, 0.64, 0.38, 1)
-COLOR_GOLD_LIGHT = (0.96, 0.64, 0.38, 0.15)
 COLOR_TEXT = (1, 1, 1, 1)
 COLOR_TEXT_GRAY = (0.6, 0.6, 0.6, 1)
 COLOR_GREEN = (0.2, 0.8, 0.4, 1)
-
-# ==================== FONT SETUP ====================
-FONT_NAME = 'Roboto'
-
-def setup_font():
-    global FONT_NAME
-    if platform == 'android':
-        android_fonts = [
-            '/system/fonts/DroidSansArabic.ttf',
-            '/system/fonts/NotoNaskhArabic-Regular.ttf',
-            '/system/fonts/NotoSansArabic-Regular.ttf',
-            '/system/fonts/NotoSansArabicUI-Regular.ttf',
-        ]
-        for font_path in android_fonts:
-            if os.path.exists(font_path):
-                try:
-                    LabelBase.register(name='ArabicFont', fn_regular=font_path)
-                    FONT_NAME = 'ArabicFont'
-                    print(f"Font loaded: {font_path}")
-                    return True
-                except:
-                    pass
-    
-    # Try bundled fonts
-    app_fonts = [
-        'Cairo-Regular.ttf',
-        os.path.join(os.path.dirname(__file__), 'Cairo-Regular.ttf'),
-    ]
-    for font_path in app_fonts:
-        if os.path.exists(font_path):
-            try:
-                LabelBase.register(name='ArabicFont', fn_regular=font_path)
-                FONT_NAME = 'ArabicFont'
-                print(f"Font loaded: {font_path}")
-                return True
-            except:
-                pass
-    return False
 
 # ==================== CONFIG ====================
 SUPABASE_URL = 'https://qippgvyupkeruvzkfdkz.supabase.co'
@@ -109,7 +54,6 @@ VODAFONE_CLIENT_ID = 'cash-app'
 ADMIN_PHONE = '01019502983'
 
 # ==================== PRODUCTS (All 22) ====================
-# Using English IDs for API, Arabic names for display
 FAKKA_PRODUCTS = [
     {"id": "Fakka_2.5_Unite", "name": "فكة 2.5", "price": 2.5, "units": 45, "validity": "1 يوم", "desc": "45 وحدة + 20 واتساب"},
     {"id": "Fakka_4.25_Unite", "name": "فكة 4.25", "price": 4.25, "units": 190, "validity": "1 يوم", "desc": "190 وحدة/صباحاً"},
@@ -148,21 +92,6 @@ POINTS_PACKAGES = [
     {"points": 100, "price": 200, "label": "100 نقطة - 200 جنيه"},
 ]
 
-# ==================== CUSTOM WIDGETS ====================
-class Card(BoxLayout):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.padding = 12
-        self.spacing = 4
-        with self.canvas.before:
-            Color(*COLOR_CARD)
-            self.rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[16])
-            self.bind(pos=self.update_rect, size=self.update_rect)
-    
-    def update_rect(self, *args):
-        self.rect.pos = self.pos
-        self.rect.size = self.size
-
 # ==================== SIM NUMBER ====================
 def get_sim_number():
     if platform != 'android':
@@ -184,17 +113,25 @@ def get_sim_number():
     return None
 
 # ==================== APP ====================
-class VodafoneApp(App):
+class VodafoneApp(MDApp):
     user_phone = StringProperty('')
     points = NumericProperty(0)
     is_admin = False
+    dialog = None
 
     def build(self):
-        setup_font()
+        self.theme_cls.theme_style = "Dark"
+        self.theme_cls.primary_palette = "Red"
+        self.theme_cls.accent_palette = "Orange"
         Window.clearcolor = COLOR_BG
         self.title = 'Mostafa - شحن فودافون'
-        self.main_layout = BoxLayout(orientation='vertical', padding=0, spacing=0)
-        
+
+        # Main screen
+        self.screen = MDScreen()
+        self.main_layout = MDBoxLayout(orientation='vertical', padding=0, spacing=0)
+        self.screen.add_widget(self.main_layout)
+
+        # Try auto-login
         auto_phone = get_sim_number()
         if auto_phone:
             self.user_phone = auto_phone
@@ -206,58 +143,72 @@ class VodafoneApp(App):
                 self.show_home()
         else:
             self.show_login()
-        
-        return self.main_layout
+
+        return self.screen
 
     # ==================== LOGIN ====================
     def show_login(self):
         self.main_layout.clear_widgets()
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        
-        logo_box = BoxLayout(size_hint_y=0.3, padding=20)
-        logo = Label(
-            text='[b][color=E63946]MOSTAFA[/color][/b]',
-            markup=True, font_size='42sp', font_name=FONT_NAME
+
+        layout = MDBoxLayout(orientation='vertical', padding=dp(20), spacing=dp(15))
+
+        # Logo
+        logo = MDLabel(
+            text='[b]MOSTAFA[/b]',
+            markup=True,
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_RED,
+            font_style='H3',
+            size_hint_y=None,
+            height=dp(80)
         )
-        logo_box.add_widget(logo)
-        layout.add_widget(logo_box)
-        
-        layout.add_widget(Label(
+        layout.add_widget(logo)
+
+        subtitle = MDLabel(
             text='شحن كروت فودافون',
-            font_size='18sp', color=COLOR_TEXT_GRAY,
-            font_name=FONT_NAME, size_hint_y=None, height=30
-        ))
-        layout.add_widget(Widget(size_hint_y=0.1))
-        
-        self.phone_input = TextInput(
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT_GRAY,
+            size_hint_y=None,
+            height=dp(30)
+        )
+        layout.add_widget(subtitle)
+
+        # Phone input
+        self.phone_input = MDTextField(
             hint_text='رقم الهاتف (01XXXXXXXXX)',
-            multiline=False, input_filter='int',
-            size_hint_y=None, height=55,
-            background_color=COLOR_CARD,
-            foreground_color=COLOR_TEXT,
-            hint_text_color=COLOR_TEXT_GRAY,
-            padding=(15, 15), font_size='16sp', font_name=FONT_NAME
+            input_filter='int',
+            size_hint_y=None,
+            height=dp(60),
+            mode='rectangle',
+            helper_text='أدخل 11 رقم',
+            helper_text_mode='on_focus'
         )
         layout.add_widget(self.phone_input)
-        layout.add_widget(Widget(size_hint_y=0.05))
-        
-        login_btn = Button(
-            text='دخول', size_hint_y=None, height=55,
-            background_color=COLOR_RED, color=COLOR_TEXT,
-            font_size='18sp', bold=True, font_name=FONT_NAME
+
+        # Login button
+        login_btn = MDRaisedButton(
+            text='دخول',
+            size_hint=(1, None),
+            height=dp(50),
+            md_bg_color=COLOR_RED,
+            text_color=COLOR_TEXT,
+            font_style='H6'
         )
         login_btn.bind(on_press=self.do_login)
         layout.add_widget(login_btn)
-        
-        auto_btn = Button(
+
+        # Auto detect
+        auto_btn = MDRoundFlatButton(
             text='الكشف التلقائي عن الرقم',
-            size_hint_y=None, height=45,
-            background_color=(0.2, 0.5, 0.9, 1),
-            color=COLOR_TEXT, font_size='13sp', font_name=FONT_NAME
+            size_hint=(1, None),
+            height=dp(45),
+            text_color=(0.2, 0.5, 0.9, 1)
         )
         auto_btn.bind(on_press=self.try_auto_login)
         layout.add_widget(auto_btn)
-        layout.add_widget(Widget(size_hint_y=0.3))
+
         self.main_layout.add_widget(layout)
 
     def try_auto_login(self, instance):
@@ -271,12 +222,12 @@ class VodafoneApp(App):
             else:
                 self.show_home()
         else:
-            self.show_popup('تنبيه', 'لم يتم العثور على رقم الشريحة')
+            self.show_snackbar('لم يتم العثور على رقم الشريحة')
 
     def do_login(self, instance):
         phone = self.phone_input.text
         if len(phone) != 11 or not phone.startswith('01'):
-            self.show_popup('خطأ', 'رقم الهاتف غير صحيح')
+            self.show_snackbar('رقم الهاتف غير صحيح')
             return
         self.user_phone = phone
         self.is_admin = (phone == ADMIN_PHONE)
@@ -311,280 +262,382 @@ class VodafoneApp(App):
     # ==================== HOME ====================
     def show_home(self):
         self.main_layout.clear_widgets()
-        scroll = ScrollView()
-        main_content = BoxLayout(orientation='vertical', padding=15, spacing=15, size_hint_y=None)
-        main_content.bind(minimum_height=main_content.setter('height'))
-        
+
+        scroll = MDScrollView()
+        content = MDBoxLayout(orientation='vertical', padding=dp(15), spacing=dp(15), size_hint_y=None)
+        content.bind(minimum_height=content.setter('height'))
+
         # Top bar
-        top_bar = BoxLayout(size_hint_y=None, height=50, padding=(10, 5))
-        with top_bar.canvas.before:
-            Color(*COLOR_RED)
-            self.top_rect = RoundedRectangle(pos=top_bar.pos, size=(Window.width, 50), radius=[0])
-            top_bar.bind(pos=self.update_top_bar)
-        
-        menu_btn = Button(text='☰', font_size='20sp', color=COLOR_TEXT,
-                         background_color=(0,0,0,0), size_hint_x=0.15)
-        title = Label(text='[b]Mostafa[/b]', markup=True, font_size='22sp',
-                     color=COLOR_TEXT, font_name=FONT_NAME)
-        refresh_btn = Button(text='↻', font_size='20sp', color=COLOR_TEXT,
-                            background_color=(0,0,0,0), size_hint_x=0.15)
-        refresh_btn.bind(on_press=lambda x: self.show_home())
-        
-        top_bar.add_widget(menu_btn)
-        top_bar.add_widget(title)
-        top_bar.add_widget(refresh_btn)
-        main_content.add_widget(top_bar)
-        
-        # Points card
-        points_card = Card(orientation='vertical', size_hint_y=None, height=220, spacing=8)
-        points_card.add_widget(Label(
-            text='مرحباً', font_size='18sp',
-            color=COLOR_GREEN, font_name=FONT_NAME,
-            size_hint_y=None, height=30
-        ))
-        points_card.add_widget(Label(
+        top_bar = MDTopAppBar(
+            title='Mostafa',
+            md_bg_color=COLOR_RED,
+            specific_text_color=COLOR_TEXT,
+            left_action_items=[['menu', lambda x: None]],
+            right_action_items=[['refresh', lambda x: self.show_home()]]
+        )
+        content.add_widget(top_bar)
+
+        # Points card - WIDER
+        points_card = MDCard(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(240),
+            padding=dp(20),
+            spacing=dp(10),
+            md_bg_color=COLOR_CARD,
+            radius=[dp(16), dp(16), dp(16), dp(16)]
+        )
+
+        welcome = MDLabel(
+            text='مرحباً',
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_GREEN,
+            font_style='H5',
+            size_hint_y=None,
+            height=dp(40)
+        )
+        points_card.add_widget(welcome)
+
+        loading_text = MDLabel(
             text='انتظر حتى يتم تحميل رقمك...',
-            font_size='14sp', color=COLOR_TEXT_GRAY,
-            font_name=FONT_NAME, size_hint_y=None, height=25
-        ))
-        points_card.add_widget(Label(
-            text=str(self.points), font_size='56sp',
-            color=COLOR_RED, font_name=FONT_NAME,
-            size_hint_y=None, height=70, bold=True
-        ))
-        points_card.add_widget(Label(
-            text='نقاطك', font_size='14sp',
-            color=COLOR_TEXT_GRAY, font_name=FONT_NAME,
-            size_hint_y=None, height=25
-        ))
-        
-        btn_row = BoxLayout(size_hint_y=None, height=45, spacing=8)
-        history_btn = Button(text='سجل العمليات', background_color=COLOR_RED,
-                            color=COLOR_TEXT, font_size='12sp', font_name=FONT_NAME)
-        recharge_points_btn = Button(text='شحن نقاط', background_color=COLOR_RED,
-                                    color=COLOR_TEXT, font_size='12sp', font_name=FONT_NAME)
-        contact_btn = Button(text='تواصل معنا', background_color=COLOR_RED,
-                            color=COLOR_TEXT, font_size='12sp', font_name=FONT_NAME)
-        
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT_GRAY,
+            size_hint_y=None,
+            height=dp(25)
+        )
+        points_card.add_widget(loading_text)
+
+        points_num = MDLabel(
+            text=str(self.points),
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_RED,
+            font_style='H2',
+            bold=True,
+            size_hint_y=None,
+            height=dp(70)
+        )
+        points_card.add_widget(points_num)
+
+        points_label = MDLabel(
+            text='نقاطك',
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT_GRAY,
+            size_hint_y=None,
+            height=dp(25)
+        )
+        points_card.add_widget(points_label)
+
+        # Action buttons row
+        btn_row = MDBoxLayout(size_hint_y=None, height=dp(50), spacing=dp(10))
+
+        history_btn = MDRaisedButton(
+            text='سجل العمليات',
+            size_hint=(1, 1),
+            md_bg_color=COLOR_RED,
+            text_color=COLOR_TEXT
+        )
+        recharge_points_btn = MDRaisedButton(
+            text='شحن نقاط',
+            size_hint=(1, 1),
+            md_bg_color=COLOR_RED,
+            text_color=COLOR_TEXT
+        )
+        contact_btn = MDRaisedButton(
+            text='تواصل معنا',
+            size_hint=(1, 1),
+            md_bg_color=COLOR_RED,
+            text_color=COLOR_TEXT
+        )
+
         recharge_points_btn.bind(on_press=self.show_recharge_dialog)
-        contact_btn.bind(on_press=lambda x: self.show_popup('تواصل', f'WhatsApp: {ADMIN_PHONE}'))
-        
+        contact_btn.bind(on_press=lambda x: self.show_snackbar(f'WhatsApp: {ADMIN_PHONE}'))
+
         btn_row.add_widget(history_btn)
         btn_row.add_widget(recharge_points_btn)
         btn_row.add_widget(contact_btn)
         points_card.add_widget(btn_row)
-        main_content.add_widget(points_card)
-        
-        # Big recharge button
-        big_recharge = Button(
-            text='[b]شحن الرصيد[/b]\nشحن رصيد فودافون',
-            markup=True, size_hint_y=None, height=80,
-            background_color=COLOR_CARD, color=COLOR_TEXT,
-            font_size='16sp', font_name=FONT_NAME
+
+        content.add_widget(points_card)
+
+        # Big recharge button - WIDER
+        big_recharge = MDCard(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(100),
+            padding=dp(15),
+            md_bg_color=COLOR_CARD,
+            radius=[dp(16), dp(16), dp(16), dp(16)],
+            ripple_behavior=True
         )
         big_recharge.bind(on_press=self.show_recharge_balance_dialog)
-        main_content.add_widget(big_recharge)
-        
-        # Title
-        main_content.add_widget(Label(
-            text='اختر الكارت', font_size='20sp',
-            color=COLOR_TEXT, font_name=FONT_NAME,
-            size_hint_y=None, height=40, bold=True
+
+        big_recharge.add_widget(MDLabel(
+            text='[b]شحن الرصيد[/b]',
+            markup=True,
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT,
+            font_style='H5',
+            size_hint_y=0.6
         ))
-        
-        # Products grid (3 columns)
-        products_grid = GridLayout(cols=3, spacing=10, padding=5, size_hint_y=None)
-        products_grid.bind(minimum_height=products_grid.setter('height'))
-        
+        big_recharge.add_widget(MDLabel(
+            text='شحن رصيد فودافون',
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT_GRAY,
+            size_hint_y=0.4
+        ))
+        content.add_widget(big_recharge)
+
+        # Title
+        content.add_widget(MDLabel(
+            text='اختر الكارت',
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT,
+            font_style='H5',
+            size_hint_y=None,
+            height=dp(40),
+            bold=True
+        ))
+
+        # Products grid - 3 columns WIDER cards
+        products_grid = MDGridLayout(
+            cols=3,
+            spacing=dp(12),
+            padding=dp(5),
+            size_hint_y=None,
+            adaptive_height=True
+        )
+
         for product in ALL_PRODUCTS:
             card = self.create_product_card(product)
             products_grid.add_widget(card)
-        
-        main_content.add_widget(products_grid)
-        scroll.add_widget(main_content)
+
+        content.add_widget(products_grid)
+        scroll.add_widget(content)
         self.main_layout.add_widget(scroll)
 
     def create_product_card(self, product):
-        card = Card(orientation='vertical', size_hint_y=None, height=130)
-        card.add_widget(Label(
+        """Create wider product card"""
+        card = MDCard(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(150),
+            padding=dp(12),
+            spacing=dp(5),
+            md_bg_color=COLOR_CARD,
+            radius=[dp(16), dp(16), dp(16), dp(16)],
+            ripple_behavior=True,
+            elevation=2
+        )
+
+        # Product name
+        name = MDLabel(
             text=f'[b]{product["name"]}[/b]',
-            markup=True, font_size='16sp',
-            color=COLOR_TEXT, font_name=FONT_NAME,
-            size_hint_y=0.4
-        ))
-        desc_text = product.get('desc', '') or f"{product.get('units', 0)} وحدة/صباحاً"
-        card.add_widget(Label(
-            text=desc_text, font_size='11sp',
-            color=COLOR_TEXT_GRAY, font_name=FONT_NAME,
+            markup=True,
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT,
+            font_style='H6',
             size_hint_y=0.35
-        ))
-        card.add_widget(Label(
-            text=product['validity'], font_size='10sp',
-            color=COLOR_TEXT_GRAY, font_name=FONT_NAME,
-            size_hint_y=0.25
-        ))
-        card.bind(on_touch_down=lambda touch, p=product: self.on_card_click(touch, p))
+        )
+        card.add_widget(name)
+
+        # Description
+        desc_text = product.get('desc', '') or f"{product.get('units', 0)} وحدة/صباحاً"
+        desc = MDLabel(
+            text=desc_text,
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT_GRAY,
+            font_style='Caption',
+            size_hint_y=0.35
+        )
+        card.add_widget(desc)
+
+        # Validity
+        validity = MDLabel(
+            text=product['validity'],
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT_GRAY,
+            font_style='Caption',
+            size_hint_y=0.30
+        )
+        card.add_widget(validity)
+
+        # Make clickable
+        card.bind(on_press=lambda x, p=product: self.show_charge_dialog(p))
+
         return card
 
-    def on_card_click(self, touch, product):
-        if touch.button == 'left':
-            self.show_charge_dialog(product)
-
-    def update_top_bar(self, instance, value):
-        if hasattr(self, 'top_rect'):
-            self.top_rect.pos = (0, instance.y)
-            self.top_rect.size = (Window.width, 50)
-
     def show_recharge_balance_dialog(self, instance):
-        content = BoxLayout(orientation='vertical', spacing=10, padding=15)
-        content.add_widget(Label(
-            text='شحن رصيد فودافون',
-            font_size='18sp', color=COLOR_TEXT,
-            font_name=FONT_NAME, bold=True
-        ))
-        
-        amount_input = TextInput(
-            hint_text='المبلغ بالجنيه', multiline=False, input_filter='float',
-            size_hint_y=None, height=50, background_color=COLOR_CARD,
-            foreground_color=COLOR_TEXT, hint_text_color=COLOR_TEXT_GRAY,
-            font_size='16sp', font_name=FONT_NAME
-        )
-        content.add_widget(amount_input)
-        
-        phone_input = TextInput(
-            hint_text='رقم الهاتف للشحن', multiline=False, input_filter='int',
-            size_hint_y=None, height=50, background_color=COLOR_CARD,
-            foreground_color=COLOR_TEXT, hint_text_color=COLOR_TEXT_GRAY,
-            font_size='16sp', font_name=FONT_NAME
-        )
-        content.add_widget(phone_input)
-        
-        pin_input = TextInput(
-            hint_text='الرقم السري للمحفظة', multiline=False, password=True,
-            size_hint_y=None, height=50, background_color=COLOR_CARD,
-            foreground_color=COLOR_TEXT, hint_text_color=COLOR_TEXT_GRAY,
-            font_size='16sp', font_name=FONT_NAME
-        )
-        content.add_widget(pin_input)
-        
-        btn_layout = BoxLayout(size_hint_y=None, height=45, spacing=10)
-        cancel = Button(text='إلغاء', background_color=(0.4,0.4,0.4,1),
-                       color=COLOR_TEXT, font_size='14sp', font_name=FONT_NAME)
-        confirm = Button(text='تأكيد', background_color=COLOR_RED,
-                        color=COLOR_TEXT, font_size='14sp', font_name=FONT_NAME, bold=True)
-        
-        popup = Popup(title='شحن الرصيد', content=content,
-                     size_hint=(0.9, 0.6), auto_dismiss=False,
-                     title_font=FONT_NAME, title_color=COLOR_TEXT)
-        
-        cancel.bind(on_press=popup.dismiss)
-        confirm.bind(on_press=lambda x: self.do_balance_recharge(
-            amount_input.text, phone_input.text, pin_input.text, popup
-        ))
-        
-        btn_layout.add_widget(cancel)
-        btn_layout.add_widget(confirm)
-        content.add_widget(btn_layout)
-        popup.open()
+        if not self.dialog:
+            content = MDBoxLayout(orientation='vertical', spacing=dp(15), padding=dp(20), size_hint_y=None, height=dp(350))
 
-    def do_balance_recharge(self, amount, phone, pin, popup):
+            content.add_widget(MDLabel(
+                text='شحن رصيد فودافون',
+                halign='center',
+                theme_text_color='Custom',
+                text_color=COLOR_TEXT,
+                font_style='H5',
+                size_hint_y=None,
+                height=dp(40)
+            ))
+
+            amount_input = MDTextField(
+                hint_text='المبلغ بالجنيه',
+                input_filter='float',
+                size_hint_y=None,
+                height=dp(50),
+                mode='rectangle'
+            )
+            content.add_widget(amount_input)
+
+            phone_input = MDTextField(
+                hint_text='رقم الهاتف للشحن',
+                input_filter='int',
+                size_hint_y=None,
+                height=dp(50),
+                mode='rectangle'
+            )
+            content.add_widget(phone_input)
+
+            pin_input = MDTextField(
+                hint_text='الرقم السري للمحفظة',
+                password=True,
+                size_hint_y=None,
+                height=dp(50),
+                mode='rectangle'
+            )
+            content.add_widget(pin_input)
+
+            self.dialog = MDDialog(
+                title='شحن الرصيد',
+                type='custom',
+                content_cls=content,
+                buttons=[
+                    MDFlatButton(text='إلغاء', theme_text_color='Custom', text_color=COLOR_TEXT_GRAY, on_press=lambda x: self.dialog.dismiss()),
+                    MDRaisedButton(text='تأكيد', md_bg_color=COLOR_RED, text_color=COLOR_TEXT, on_press=lambda x: self.do_balance_recharge(amount_input.text, phone_input.text, pin_input.text))
+                ]
+            )
+        self.dialog.open()
+
+    def do_balance_recharge(self, amount, phone, pin):
         if not amount or not phone or not pin:
-            self.show_popup('خطأ', 'اكمل جميع البيانات')
+            self.show_snackbar('اكمل جميع البيانات')
             return
-        popup.dismiss()
-        self.show_popup('معلومة', 'جاري تنفيذ طلب شحن الرصيد...')
+        self.dialog.dismiss()
+        self.dialog = None
+        self.show_snackbar('جاري تنفيذ طلب شحن الرصيد...')
 
     def show_charge_dialog(self, product):
-        content = BoxLayout(orientation='vertical', spacing=10, padding=15)
-        content.add_widget(Label(
-            text=f'[b]{product["name"]}[/b]\nسيتم خصم نقطة واحدة',
-            markup=True, font_size='16sp', color=COLOR_TEXT, font_name=FONT_NAME
+        content = MDBoxLayout(orientation='vertical', spacing=dp(15), padding=dp(20), size_hint_y=None, height=dp(300))
+
+        content.add_widget(MDLabel(
+            text=f'[b]{product["name"]}[/b]
+سيتم خصم نقطة واحدة',
+            markup=True,
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT,
+            font_style='H6',
+            size_hint_y=None,
+            height=dp(60)
         ))
-        
-        target = TextInput(
-            hint_text='رقم الهاتف للشحن', multiline=False, input_filter='int',
-            size_hint_y=None, height=50, background_color=COLOR_CARD,
-            foreground_color=COLOR_TEXT, hint_text_color=COLOR_TEXT_GRAY,
-            font_size='16sp', font_name=FONT_NAME
+
+        target = MDTextField(
+            hint_text='رقم الهاتف للشحن',
+            input_filter='int',
+            size_hint_y=None,
+            height=dp(50),
+            mode='rectangle'
         )
         content.add_widget(target)
-        
-        pin = TextInput(
+
+        pin = MDTextField(
             hint_text='الرقم السري للمحفظة (4 أرقام)',
-            multiline=False, password=True, input_filter='int',
-            size_hint_y=None, height=50, background_color=COLOR_CARD,
-            foreground_color=COLOR_TEXT, hint_text_color=COLOR_TEXT_GRAY,
-            font_size='16sp', font_name=FONT_NAME
+            password=True,
+            input_filter='int',
+            size_hint_y=None,
+            height=dp(50),
+            mode='rectangle'
         )
         content.add_widget(pin)
-        
-        btn_layout = BoxLayout(size_hint_y=None, height=45, spacing=10)
-        cancel = Button(text='إلغاء', background_color=(0.4,0.4,0.4,1),
-                       color=COLOR_TEXT, font_size='14sp', font_name=FONT_NAME)
-        confirm = Button(text='تأكيد الشحن', background_color=COLOR_RED,
-                        color=COLOR_TEXT, font_size='14sp', font_name=FONT_NAME, bold=True)
-        
-        popup = Popup(title=f'شحن {product["name"]}', content=content,
-                     size_hint=(0.9, 0.55), auto_dismiss=False,
-                     title_font=FONT_NAME, title_color=COLOR_TEXT)
-        
-        cancel.bind(on_press=popup.dismiss)
-        confirm.bind(on_press=lambda x: self.process_charge(target.text, pin.text, product, popup))
-        
-        btn_layout.add_widget(cancel)
-        btn_layout.add_widget(confirm)
-        content.add_widget(btn_layout)
-        popup.open()
 
-    def process_charge(self, target, pin, product, popup):
+        dialog = MDDialog(
+            title=f'شحن {product["name"]}',
+            type='custom',
+            content_cls=content,
+            buttons=[
+                MDFlatButton(text='إلغاء', theme_text_color='Custom', text_color=COLOR_TEXT_GRAY, on_press=lambda x: dialog.dismiss()),
+                MDRaisedButton(text='تأكيد الشحن', md_bg_color=COLOR_RED, text_color=COLOR_TEXT, on_press=lambda x: self.process_charge(target.text, pin.text, product, dialog))
+            ]
+        )
+        dialog.open()
+
+    def process_charge(self, target, pin, product, dialog):
         if self.points <= 0:
-            self.show_popup('خطأ', 'لا توجد نقاط كافية')
+            self.show_snackbar('لا توجد نقاط كافية')
             return
         if len(target) != 11 or not target.startswith('01'):
-            self.show_popup('خطأ', 'رقم الهاتف غير صحيح')
+            self.show_snackbar('رقم الهاتف غير صحيح')
             return
         if len(pin) != 4:
-            self.show_popup('خطأ', 'الرقم السري يجب أن يكون 4 أرقام')
+            self.show_snackbar('الرقم السري يجب أن يكون 4 أرقام')
             return
-        popup.dismiss()
+        dialog.dismiss()
         self.charge_card(target, pin, product)
 
     def charge_card(self, msisdn, pin, product):
-        loading = Popup(title='جاري الشحن...', auto_dismiss=False,
-                       title_font=FONT_NAME, title_color=COLOR_TEXT,
-                       content=BoxLayout(padding=20))
-        loading.content.add_widget(ProgressBar(max=100, value=50))
-        loading.open()
-        
+        self.dialog = MDDialog(
+            title='جاري الشحن...',
+            type='custom',
+            content_cls=MDBoxLayout(
+                MDProgressBar(value=50, size_hint_y=None, height=dp(20)),
+                padding=dp(30),
+                size_hint_y=None,
+                height=dp(100)
+            )
+        )
+        self.dialog.open()
+
         def thread():
             try:
                 self.points -= 1
                 self.update_points()
                 result = self.call_vodafone_api(msisdn, pin, product['id'])
-                
-                Clock.schedule_once(lambda dt: loading.dismiss(), 0)
-                
+
+                Clock.schedule_once(lambda dt: self.dialog.dismiss(), 0)
+                self.dialog = None
+
                 if result['success']:
-                    Clock.schedule_once(lambda dt: self.show_popup('✅ نجاح', result['message']), 0)
+                    Clock.schedule_once(lambda dt: self.show_snackbar('✅ ' + result['message']), 0)
                     self.save_operation(product, msisdn, 'success')
                 else:
                     self.points += 1
                     self.update_points()
-                    Clock.schedule_once(lambda dt: self.show_popup('❌ فشل', result['message']), 0)
+                    Clock.schedule_once(lambda dt: self.show_snackbar('❌ ' + result['message']), 0)
                     self.save_operation(product, msisdn, 'failed')
-                
+
                 Clock.schedule_once(lambda dt: self.show_home(), 0)
             except Exception as e:
-                Clock.schedule_once(lambda dt: loading.dismiss(), 0)
+                Clock.schedule_once(lambda dt: self.dialog.dismiss() if self.dialog else None, 0)
+                self.dialog = None
                 self.points += 1
                 self.update_points()
-                Clock.schedule_once(lambda dt: self.show_popup('خطأ', str(e)), 0)
-        
+                Clock.schedule_once(lambda dt: self.show_snackbar(f'خطأ: {str(e)}'), 0)
+
         threading.Thread(target=thread, daemon=True).start()
 
     def call_vodafone_api(self, msisdn, pin, product_id):
         session = requests.Session()
-        
+
         headers_base = {
             'User-Agent': 'okhttp/4.12.0',
             'Accept-Encoding': 'gzip',
@@ -596,7 +649,7 @@ class VodafoneApp(App):
             'x-agent-version': '2026.4.1',
             'x-agent-build': '1139',
         }
-        
+
         resp1 = session.get(
             'https://mobile.vodafone.com.eg/checkSeamless/realms/vf-realm/protocol/openid-connect/auth',
             params={'client_id': 'ana-vodafone-app-seamless'},
@@ -604,9 +657,9 @@ class VodafoneApp(App):
         )
         if resp1.status_code != 200:
             return {'success': False, 'message': 'فشل الاتصال الأولي'}
-        
+
         seamless_token = resp1.json().get('seamlessToken')
-        
+
         headers_token = headers_base.copy()
         headers_token.update({
             'seamlessToken': seamless_token,
@@ -615,7 +668,7 @@ class VodafoneApp(App):
             'firstTimeLogin': 'true',
             'Content-Type': 'application/x-www-form-urlencoded'
         })
-        
+
         resp2 = session.post(
             'https://mobile.vodafone.com.eg/auth/realms/vf-realm/protocol/openid-connect/token',
             data={'grant_type': 'password', 'client_secret': VODAFONE_CLIENT_SECRET,
@@ -623,10 +676,11 @@ class VodafoneApp(App):
             headers=headers_token, timeout=30
         )
         if resp2.status_code != 200:
-            return {'success': False, 'message': 'فشل تسجيل الدخول\nتأكد من فتح داتا فودافون'}
-        
+            return {'success': False, 'message': 'فشل تسجيل الدخول
+تأكد من فتح داتا فودافون'}
+
         access_token = resp2.json().get('access_token')
-        
+
         headers_order = headers_token.copy()
         headers_order.update({
             'Content-Type': 'application/json',
@@ -636,9 +690,9 @@ class VodafoneApp(App):
             'api-version': 'v2',
             'msisdn': msisdn
         })
-        
+
         api_msisdn = msisdn[1:] if msisdn.startswith('0') else msisdn
-        
+
         order_body = {
             "channel": {"name": "MobileApp"},
             "orderItem": [{
@@ -662,20 +716,21 @@ class VodafoneApp(App):
             "relatedParty": [{"id": pin, "name": "pin", "role": "Requestor"}],
             "@type": "CashFakkaAndMared"
         }
-        
+
         resp3 = session.post(
             'https://mobile.vodafone.com.eg/services/dxl/pom/productOrder',
             json=order_body, headers=headers_order, timeout=30
         )
-        
+
         result = resp3.json()
-        
+
         if resp3.status_code == 200:
             return {'success': True, 'message': 'تم الشحن بنجاح!'}
         elif result.get('code') == '6051':
             balance = next((item['value'] for item in result.get('characteristic', []) 
                           if item.get('name') == 'RemainingBalance'), 'غير معروف')
-            return {'success': False, 'message': f'لا يوجد رصيد كافي\nرصيدك: {balance} جنيه'}
+            return {'success': False, 'message': f'لا يوجد رصيد كافي
+رصيدك: {balance} جنيه'}
         else:
             return {'success': False, 'message': result.get('reason', 'خطأ غير معروف')}
 
@@ -720,33 +775,38 @@ class VodafoneApp(App):
             pass
 
     def show_recharge_dialog(self, instance=None):
-        content = BoxLayout(orientation='vertical', spacing=8, padding=20)
-        content.add_widget(Label(
+        content = MDBoxLayout(orientation='vertical', spacing=dp(10), padding=dp(20), size_hint_y=None, height=dp(350))
+
+        content.add_widget(MDLabel(
             text='اختر باقة الشحن:',
-            font_size='18sp', color=COLOR_TEXT,
-            font_name=FONT_NAME, size_hint_y=None, height=40
+            halign='center',
+            theme_text_color='Custom',
+            text_color=COLOR_TEXT,
+            font_style='H6',
+            size_hint_y=None,
+            height=dp(40)
         ))
-        
+
         for pkg in POINTS_PACKAGES:
-            btn = Button(
+            btn = MDRaisedButton(
                 text=pkg['label'],
-                size_hint_y=None, height=55,
-                background_color=COLOR_GOLD_LIGHT,
-                color=COLOR_GOLD, font_size='16sp',
-                font_name=FONT_NAME
+                size_hint=(1, None),
+                height=dp(55),
+                md_bg_color=(0.96, 0.64, 0.38, 0.2),
+                text_color=COLOR_GOLD
             )
             btn.bind(on_press=lambda x, p=pkg: self.send_recharge_request(p))
             content.add_widget(btn)
-        
-        close = Button(text='إلغاء', size_hint_y=None, height=55,
-                      background_color=(0.4,0.4,0.4,1),
-                      color=COLOR_TEXT, font_size='16sp', font_name=FONT_NAME)
-        
-        popup = Popup(title='شحن نقاط', content=content,
-                     size_hint=(0.9, 0.7), title_font=FONT_NAME, title_color=COLOR_TEXT)
-        close.bind(on_press=popup.dismiss)
-        content.add_widget(close)
-        popup.open()
+
+        dialog = MDDialog(
+            title='شحن نقاط',
+            type='custom',
+            content_cls=content,
+            buttons=[
+                MDFlatButton(text='إلغاء', theme_text_color='Custom', text_color=COLOR_TEXT_GRAY, on_press=lambda x: dialog.dismiss())
+            ]
+        )
+        dialog.open()
 
     def send_recharge_request(self, package):
         try:
@@ -769,50 +829,45 @@ class VodafoneApp(App):
             )
         except:
             pass
-        
-        msg = f"🔔 طلب شحن نقاط!\n👤 {self.user_phone}\n⭐ {package['points']} نقطة\n💰 {package['price']} جنيه"
+
+        msg = f"🔔 طلب شحن نقاط!
+👤 {self.user_phone}
+⭐ {package['points']} نقطة
+💰 {package['price']} جنيه"
         try:
             import urllib.parse, webbrowser
             webbrowser.open(f'https://wa.me/2{ADMIN_PHONE}?text={urllib.parse.quote(msg)}')
         except:
             pass
-        
-        self.show_popup('تم', 'تم إرسال طلبك')
+
+        self.show_snackbar('تم إرسال طلبك')
 
     # ==================== ADMIN PANEL ====================
     def show_admin_panel(self):
         self.main_layout.clear_widgets()
-        
-        header = BoxLayout(size_hint_y=None, height=60, spacing=5)
-        header.add_widget(Label(
-            text='[b][color=E63946]لوحة التحكم[/color][/b]',
-            markup=True, font_size='20sp', font_name=FONT_NAME
-        ))
-        
-        refresh = Button(text='🔄', size_hint_x=0.2,
-                        background_color=(0.2, 0.6, 1, 1), font_size='20sp')
-        refresh.bind(on_press=lambda x: self.load_admin_requests())
-        header.add_widget(refresh)
-        
-        logout = Button(text='خروج', size_hint_x=0.2,
-                       background_color=COLOR_RED, color=COLOR_TEXT,
-                       font_size='12sp', font_name=FONT_NAME)
-        logout.bind(on_press=lambda x: self.show_login())
-        header.add_widget(logout)
-        
-        self.main_layout.add_widget(header)
-        
-        stats = BoxLayout(size_hint_y=None, height=40)
-        self.pending_label = Label(
+
+        top_bar = MDTopAppBar(
+            title='لوحة التحكم',
+            md_bg_color=COLOR_RED,
+            specific_text_color=COLOR_TEXT,
+            left_action_items=[['arrow-left', lambda x: self.show_login()]],
+            right_action_items=[['refresh', lambda x: self.load_admin_requests()]]
+        )
+        self.main_layout.add_widget(top_bar)
+
+        stats = MDBoxLayout(size_hint_y=None, height=dp(40), padding=dp(10))
+        self.pending_label = MDLabel(
             text='جاري التحميل...',
-            color=COLOR_GOLD, font_size='16sp', font_name=FONT_NAME
+            theme_text_color='Custom',
+            text_color=COLOR_GOLD,
+            font_style='H6'
         )
         stats.add_widget(self.pending_label)
         self.main_layout.add_widget(stats)
-        
-        self.requests_layout = BoxLayout(orientation='vertical')
+
+        self.requests_layout = MDBoxLayout(orientation='vertical')
         self.main_layout.add_widget(self.requests_layout)
-        
+
         self.load_admin_requests()
         Clock.schedule_interval(lambda dt: self.load_admin_requests(), 30)
 
@@ -825,59 +880,83 @@ class VodafoneApp(App):
                     headers=headers, timeout=10
                 )
                 requests_list = resp.json()
-                
+
                 users_resp = requests.get(
                     f'{SUPABASE_URL}/rest/v1/users?select=phone,points',
                     headers=headers, timeout=10
                 )
                 users = {u['phone']: u['points'] for u in users_resp.json()}
-                
+
                 Clock.schedule_once(lambda dt: self.display_requests(requests_list, users), 0)
             except:
-                Clock.schedule_once(lambda dt: self.show_popup('خطأ', 'فشل التحميل'), 0)
-        
+                Clock.schedule_once(lambda dt: self.show_snackbar('فشل تحميل الطلبات'), 0)
+
         threading.Thread(target=fetch, daemon=True).start()
 
     def display_requests(self, requests_list, users):
         self.requests_layout.clear_widgets()
         self.pending_label.text = f'📋 طلبات قيد الانتظار: {len(requests_list)}'
-        
+
         if not requests_list:
-            self.requests_layout.add_widget(Label(
-                text='لا توجد طلبات', color=COLOR_TEXT_GRAY,
-                font_size='18sp', font_name=FONT_NAME
+            self.requests_layout.add_widget(MDLabel(
+                text='لا توجد طلبات',
+                halign='center',
+                theme_text_color='Custom',
+                text_color=COLOR_TEXT_GRAY,
+                font_style='H5'
             ))
             return
-        
-        scroll = ScrollView()
-        layout = BoxLayout(orientation='vertical', spacing=8, padding=10, size_hint_y=None)
+
+        scroll = MDScrollView()
+        layout = MDBoxLayout(orientation='vertical', spacing=dp(10), padding=dp(15), size_hint_y=None)
         layout.bind(minimum_height=layout.setter('height'))
-        
+
         for req in requests_list:
-            card = Card(orientation='vertical', size_hint_y=None, height=160, padding=10)
-            
-            info = Label(
-                text=f'[b]{req["user_phone"]}[/b]\n⭐ {req["points"]} نقطة | 💰 {req["price"]} جنيه',
-                markup=True, font_size='14sp', color=COLOR_TEXT,
-                font_name=FONT_NAME, size_hint_y=None, height=80
+            card = MDCard(
+                orientation='vertical',
+                size_hint_y=None,
+                height=dp(180),
+                padding=dp(15),
+                spacing=dp(10),
+                md_bg_color=COLOR_CARD,
+                radius=[dp(16), dp(16), dp(16), dp(16)]
+            )
+
+            info = MDLabel(
+                text=f'[b]{req["user_phone"]}[/b]
+⭐ {req["points"]} نقطة | 💰 {req["price"]} جنيه',
+                markup=True,
+                theme_text_color='Custom',
+                text_color=COLOR_TEXT,
+                font_style='H6',
+                size_hint_y=None,
+                height=dp(80)
             )
             card.add_widget(info)
-            
-            btn_row = BoxLayout(size_hint_y=None, height=40, spacing=10)
-            reject = Button(text='❌ رفض', background_color=(0.8,0,0,1),
-                           color=COLOR_TEXT, font_size='13sp', font_name=FONT_NAME)
-            approve = Button(text='✅ موافقة', background_color=(0,0.7,0.3,1),
-                            color=COLOR_TEXT, font_size='13sp', font_name=FONT_NAME)
-            
+
+            btn_row = MDBoxLayout(size_hint_y=None, height=dp(45), spacing=dp(10))
+            reject = MDRaisedButton(
+                text='❌ رفض',
+                size_hint=(1, 1),
+                md_bg_color=(0.8, 0, 0, 1),
+                text_color=COLOR_TEXT
+            )
+            approve = MDRaisedButton(
+                text='✅ موافقة',
+                size_hint=(1, 1),
+                md_bg_color=(0, 0.7, 0.3, 1),
+                text_color=COLOR_TEXT
+            )
+
             reject.bind(on_press=lambda x, rid=req['id']: self.handle_request(rid, 'rejected', req['user_phone'], 0))
             approve.bind(on_press=lambda x, rid=req['id'], p=req['user_phone'], pts=req['points']: 
                         self.handle_request(rid, 'approved', p, pts))
-            
+
             btn_row.add_widget(reject)
             btn_row.add_widget(approve)
             card.add_widget(btn_row)
             layout.add_widget(card)
-        
+
         scroll.add_widget(layout)
         self.requests_layout.add_widget(scroll)
 
@@ -895,7 +974,7 @@ class VodafoneApp(App):
                     json={'status': status, 'updated_at': datetime.now().isoformat()},
                     timeout=10
                 )
-                
+
                 if status == 'approved':
                     resp = requests.get(
                         f'{SUPABASE_URL}/rest/v1/users?phone=eq.{phone}&select=points',
@@ -910,28 +989,22 @@ class VodafoneApp(App):
                             json={'points': new_points, 'updated_at': datetime.now().isoformat()},
                             timeout=10
                         )
-                
+
                 Clock.schedule_once(lambda dt: self.load_admin_requests(), 0)
                 msg = 'تمت الموافقة' if status == 'approved' else 'تم الرفض'
-                Clock.schedule_once(lambda dt: self.show_popup('تم', msg), 0)
+                Clock.schedule_once(lambda dt: self.show_snackbar(msg), 0)
             except:
-                Clock.schedule_once(lambda dt: self.show_popup('خطأ', 'فشل المعالجة'), 0)
-        
+                Clock.schedule_once(lambda dt: self.show_snackbar('فشل المعالجة'), 0)
+
         threading.Thread(target=process, daemon=True).start()
 
-    def show_popup(self, title, message):
-        content = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        content.add_widget(Label(text=message, font_size='16sp', color=COLOR_TEXT, font_name=FONT_NAME))
-        
-        btn = Button(text='حسناً', size_hint_y=None, height=50,
-                    background_color=COLOR_RED, color=COLOR_TEXT,
-                    font_size='16sp', font_name=FONT_NAME)
-        
-        popup = Popup(title=title, content=content,
-                     size_hint=(0.85, 0.35), title_font=FONT_NAME, title_color=COLOR_TEXT)
-        btn.bind(on_press=popup.dismiss)
-        content.add_widget(btn)
-        popup.open()
+    def show_snackbar(self, text):
+        MDSnackbar(
+            MDLabel(text=text),
+            md_bg_color=COLOR_CARD,
+            pos_hint={'center_x': 0.5, 'center_y': 0.1},
+            size_hint_x=0.9
+        ).open()
 
 if __name__ == '__main__':
     VodafoneApp().run()
